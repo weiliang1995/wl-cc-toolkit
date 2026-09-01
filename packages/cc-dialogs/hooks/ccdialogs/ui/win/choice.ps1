@@ -1,53 +1,63 @@
 param([Parameter(Mandatory=$true)][string]$ParamsPath)
 
+# Pure ASCII only -- see _style.ps1 for why. All display text comes from
+# $ParamsPath, which is read as UTF-8 below.
+
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+. "$PSScriptRoot\_style.ps1"
 
 $p = Get-Content -LiteralPath $ParamsPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
-$script:picked = @()
+$script:CcTheme = Get-CcTheme
+$theme          = $script:CcTheme
+$script:picked  = @()
 
-$form                 = New-Object System.Windows.Forms.Form
-$form.Text            = $p.title
-$form.Size            = New-Object System.Drawing.Size(580, 440)
-$form.StartPosition   = 'CenterScreen'
-$form.TopMost         = $true
-$form.FormBorderStyle = 'Sizable'
-$form.MaximizeBox     = $false
-$form.MinimizeBox     = $false
-$script:form          = $form
+$options = @($p.options)
+$W       = 470
 
-$label            = New-Object System.Windows.Forms.Label
-$label.Text       = [string]$p.prompt
-$label.Location   = New-Object System.Drawing.Point(12, 12)
-$label.Size       = New-Object System.Drawing.Size(540, 46)
-$label.Font       = New-Object System.Drawing.Font('Segoe UI', 10)
-$label.Anchor     = 'Top,Left,Right'
-$form.Controls.Add($label)
+# Grow with the option count, but stay a panel rather than a window.
+$rowH    = 26
+$listH   = [Math]::Min([Math]::Max(($options.Count * $rowH + 8), 60), 300)
+$H       = 118 + $listH + 54
 
-# 多选用 CheckedListBox，单选用 ListBox —— 勾选框本身就说明了可以多选
+$form        = New-CcToastForm -Title $p.appName -Width $W -Height $H -Theme $theme
+$script:form = $form
+
+$form.Controls.Add((New-CcHeader -Text $p.appName -Theme $theme -Width $W))
+
+$prompt           = New-Object System.Windows.Forms.Label
+$prompt.Text      = [string]$p.prompt
+$prompt.ForeColor = $theme.Text
+$prompt.Font      = New-Object System.Drawing.Font('Segoe UI', 11, [System.Drawing.FontStyle]::Bold)
+$prompt.Location  = New-Object System.Drawing.Point(18, 34)
+$prompt.Size      = New-Object System.Drawing.Size(($W - 36), 48)
+$prompt.BackColor = [System.Drawing.Color]::Transparent
+$form.Controls.Add($prompt)
+
+# Checkboxes for multi-select say "you may pick several" without a caption.
 if ($p.multi) {
-  $list = New-Object System.Windows.Forms.CheckedListBox
+  $list              = New-Object System.Windows.Forms.CheckedListBox
   $list.CheckOnClick = $true
 } else {
   $list = New-Object System.Windows.Forms.ListBox
 }
-$list.Location = New-Object System.Drawing.Point(12, 64)
-$list.Size     = New-Object System.Drawing.Size(540, 280)
-$list.Font     = New-Object System.Drawing.Font('Segoe UI', 10)
-$list.Anchor   = 'Top,Left,Right,Bottom'
-foreach ($o in $p.options) { [void]$list.Items.Add([string]$o) }
+$list.Location    = New-Object System.Drawing.Point(18, 88)
+$list.Size        = New-Object System.Drawing.Size(($W - 36), $listH)
+$list.BackColor   = $theme.Panel
+$list.ForeColor   = $theme.Text
+$list.BorderStyle = 'FixedSingle'
+$list.Font        = New-Object System.Drawing.Font('Segoe UI', 10)
+$list.ItemHeight  = 22
+foreach ($o in $options) { [void]$list.Items.Add([string]$o) }
 if (-not $p.multi -and $list.Items.Count -gt 0) { $list.SelectedIndex = 0 }
 $script:list = $list
 $form.Controls.Add($list)
 
-$ok          = New-Object System.Windows.Forms.Button
-$ok.Text     = '确定'
-$ok.Size     = New-Object System.Drawing.Size(120, 32)
-$ok.Location = New-Object System.Drawing.Point(432, 356)
-$ok.Anchor   = 'Bottom,Right'
+$y = $H - 46
+
+$ok          = New-CcButton -Text $p.labels.ok -Tag 'ok' -Theme $theme -Primary -Width 104
+$ok.Location = New-Object System.Drawing.Point(($W - 122), $y)
 $ok.Add_Click({
   if ($p.multi) {
     $script:picked = @($script:list.CheckedItems)
@@ -58,11 +68,8 @@ $ok.Add_Click({
 })
 $form.Controls.Add($ok)
 
-$cancel          = New-Object System.Windows.Forms.Button
-$cancel.Text     = '取消'
-$cancel.Size     = New-Object System.Drawing.Size(120, 32)
-$cancel.Location = New-Object System.Drawing.Point(304, 356)
-$cancel.Anchor   = 'Bottom,Right'
+$cancel          = New-CcButton -Text $p.labels.cancel -Tag 'cancel' -Theme $theme -Width 88
+$cancel.Location = New-Object System.Drawing.Point(($W - 218), $y)
 $cancel.Add_Click({ $script:picked = @(); $script:form.Close() })
 $form.Controls.Add($cancel)
 

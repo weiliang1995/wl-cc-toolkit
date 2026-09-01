@@ -1,10 +1,13 @@
 param([string]$ParamsPath)
 
+# Pure ASCII only -- see _style.ps1 for why.
+
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-# 取 HWND 而非 PID：VS Code / Cursor 的多个窗口共用同一个进程，PID 比对
-# 必然误判；GetForegroundWindow 拿到的是具体那一个窗口。
+# Identify the window by HWND, not PID: VS Code and Cursor share one process
+# across all their windows, so a PID comparison always misfires.
+# GetForegroundWindow gives us the specific window instead.
 Add-Type @'
 using System;
 using System.Text;

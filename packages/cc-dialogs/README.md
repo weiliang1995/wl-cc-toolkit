@@ -1,56 +1,87 @@
 # cc-dialogs
 
-把 Claude Code 的终端交互替换为 macOS / Windows 原生对话框。
+Replaces Claude Code's terminal prompts with native macOS / Windows panels.
 
-## 场景
+## What it covers
 
-| Hook | 脚本 | 作用 |
+| Hook | Script | Effect |
 |---|---|---|
-| `PermissionRequest` | `permission_dialog.py` | 权限确认 → 原生三按钮对话框（允许 / 总是允许 / 拒绝） |
-| `PreToolUse` (AskUserQuestion) | `question_dialog.py` | 选项询问 → 原生列表，支持多选 |
-| `UserPromptSubmit` | `focus_baseline.py` | 记录焦点基准（纯副作用，不弹窗） |
-| `Stop` | `idle_notify.py` | 你切走窗口了才发系统通知 |
+| `PermissionRequest` | `permission_dialog.py` | Permission prompt becomes a native panel (Allow / Always allow / Deny) |
+| `PreToolUse` (AskUserQuestion) | `question_dialog.py` | Question becomes a native list, multi-select supported |
+| `UserPromptSubmit` | `focus_baseline.py` | Records the focus baseline (side effect only, no UI) |
+| `Stop` | `idle_notify.py` | Sends a system notification, but only if you looked away |
 
-## 要求
+Panels appear in the bottom-right corner rather than centred, so they read as
+notifications you can act on rather than modal interruptions.
+
+## Requirements
 
 - Python 3.8+
-- macOS 或 Windows 10+
-- 不需要安装任何第三方包
+- macOS, or Windows 10+
+- No third-party packages
 
-## 开关
+## Language
 
-设 `CC_DIALOGS=off` 可临时全部禁用（跑批处理时用）。
+Button labels follow the language of the content being shown: a Chinese
+question gets Chinese buttons, an English one gets English. The content
+itself comes from Claude, so it is already in whatever language you are
+working in. Set `CC_DIALOGS_LANG=en` or `=zh` to force one.
 
-## 降级
+## Switch
 
-任何异常都会静默回退到 Claude Code 原本的终端提示，绝不卡住会话。
-覆盖：弹窗取消、超时、无图形界面、PowerShell/osascript 缺失、脚本崩溃。
+Set `CC_DIALOGS=off` to disable everything (useful for batch runs).
 
-## 焦点判定
+## Fallback
 
-通知只在你**切走窗口**时才发，判据是自校准的：
+Any failure exits silently and Claude Code falls back to its own terminal
+prompt. This covers cancellation, timeouts, headless sessions, a missing
+PowerShell or osascript, and any unhandled exception. The session never
+hangs because of this plugin.
 
-1. `UserPromptSubmit` 时记录当前前台窗口 —— 你按回车那一刻窗口必然是前台的
-2. `Stop` 时再取一次，与基准比对
-3. 相同则认为你还在看，不打扰
+## How the focus check works
 
-比对按标题分隔符（`—` `–` `|` ` - `）切段：三段以上丢弃首段（通常是文件名）比较其余，
-两段及以下要求全等。因此 VS Code 里切换文件不算切走窗口，切到另一个项目的窗口则算。
+Notifications fire only when you have actually switched away:
 
-不用「最长公共后缀 + 字符阈值」：两个开着不同项目的 VS Code 窗口同样共享
-` - Visual Studio Code`，不存在安全的阈值。
+1. At `UserPromptSubmit`, record the foreground window -- the moment you press
+   Enter, your window is by definition in front
+2. At `Stop`, read it again and compare
+3. If they match, you are still watching, so stay quiet
 
-## 自检
+The comparison splits titles on the usual separators (`—` `–` `|` ` - `).
+With three or more segments the first is dropped (it is normally the
+filename) and the rest must match; with two or fewer, the whole title must
+match. So switching files inside VS Code is still the same window, while a
+different project's window is not.
+
+A longest-common-suffix threshold does not work here: two VS Code windows on
+*different* projects still share ` - Visual Studio Code`, so no threshold is
+safe.
+
+## Self-check
 
 ```
-py -3 selftest.py          # 焦点比对逻辑，两秒
-py -3 selftest.py --ui     # 额外弹出真实对话框
+py -3 selftest.py          # focus and fallback logic, two seconds
+py -3 selftest.py --ui     # also pops the real panels
 ```
 
-## 已知限制
+## Encoding rules for contributors
 
-- **RDP 断开后**弹窗发给已断开的桌面，你看不到，Claude 会等到 600 秒超时后回退终端
-- **SSH 连入**无桌面，全部功能静默禁用，行为与未安装一致
-- 终端里 `cd` 若导致窗口标题变化，可能被判为切走窗口而多发一条通知
-- `.ps1` 必须保持 CRLF 换行 —— PowerShell 5.1 的 here-string 在 LF 下解析失败
-  （已由仓库根部 `.gitattributes` 锁定）
+Two Windows-specific traps, both already hit once:
+
+- **`.ps1` files must stay pure ASCII.** Windows PowerShell 5.1 parses
+  BOM-less `.ps1` files using the system ANSI code page, so any non-ASCII
+  literal is mangled. All display text is passed in through the JSON params
+  file, which is read with an explicit `-Encoding UTF8`.
+- **`.ps1` files must stay CRLF.** PowerShell 5.1 fails to parse here-strings
+  (`@'...'@`) with LF endings and treats the embedded C# as PowerShell.
+  Enforced by `.gitattributes` at the repository root.
+
+## Known limitations
+
+- **After an RDP disconnect** the panel is drawn on the disconnected desktop
+  where you cannot see it; Claude waits out the 600s timeout and then falls
+  back to the terminal
+- **Over SSH** there is no desktop, so everything silently disables and
+  behaves as though the plugin were not installed
+- A terminal `cd` that changes the window title may read as looking away and
+  produce one extra notification

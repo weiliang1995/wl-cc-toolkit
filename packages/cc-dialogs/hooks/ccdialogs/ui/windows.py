@@ -9,6 +9,8 @@ import pathlib
 import subprocess
 import tempfile
 
+from .. import labels
+
 _PS_DIR = pathlib.Path(__file__).parent / "win"
 
 # 弹窗要等用户点击，不设超时；探测类调用必须快，避免拖慢每一轮对话。
@@ -40,16 +42,23 @@ def run_ps(script_name, params, timeout=_PROBE_TIMEOUT):
 
 
 def ask_permission(title, body, allow_always):
+    lb = labels.of(title, body)
     r = run_ps("permission.ps1",
-               {"title": title, "body": body, "allowAlways": bool(allow_always)},
+               {"appName": labels.APP_NAME,
+                "title": title, "body": body,
+                "allowAlways": bool(allow_always),
+                "labels": {k: lb[k] for k in ("allow", "always", "deny")}},
                timeout=_DIALOG_TIMEOUT)
     return r.get("result", "cancel")
 
 
 def ask_choice(title, prompt, options, multi):
+    lb = labels.of(prompt, *options)
     r = run_ps("choice.ps1",
-               {"title": title, "prompt": prompt,
-                "options": list(options), "multi": bool(multi)},
+               {"appName": labels.APP_NAME,
+                "title": title, "prompt": prompt,
+                "options": list(options), "multi": bool(multi),
+                "labels": {k: lb[k] for k in ("ok", "cancel")}},
                timeout=_DIALOG_TIMEOUT)
     picked = r.get("picked") or []
     # ConvertTo-Json 会把单元素数组退化成标量

@@ -1,72 +1,76 @@
 param([Parameter(Mandatory=$true)][string]$ParamsPath)
 
+# Pure ASCII only -- see _style.ps1 for why. All display text comes from
+# $ParamsPath, which is read as UTF-8 below.
+
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+. "$PSScriptRoot\_style.ps1"
 
 $p = Get-Content -LiteralPath $ParamsPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
-$script:result = 'cancel'
+$script:CcTheme = Get-CcTheme
+$theme          = $script:CcTheme
+$script:result  = 'cancel'
 
-$form                 = New-Object System.Windows.Forms.Form
-$form.Text            = $p.title
-$form.Size            = New-Object System.Drawing.Size(640, 400)
-$form.StartPosition   = 'CenterScreen'
-$form.TopMost         = $true
-$form.FormBorderStyle = 'Sizable'
-$form.MaximizeBox     = $false
-$form.MinimizeBox     = $false
-$script:form          = $form
+$W = 470
+$H = 300
 
-# 只读多行滚动框：长 Bash 命令与大段 diff 无需截断
-$box            = New-Object System.Windows.Forms.TextBox
-$box.Multiline  = $true
-$box.ReadOnly   = $true
-$box.ScrollBars = 'Vertical'
-$box.WordWrap   = $true
-$box.Font       = New-Object System.Drawing.Font('Consolas', 9)
-$box.Text       = [string]$p.body
-$box.Location   = New-Object System.Drawing.Point(12, 12)
-$box.Size       = New-Object System.Drawing.Size(600, 290)
-$box.Anchor     = 'Top,Left,Right,Bottom'
+$form         = New-CcToastForm -Title $p.appName -Width $W -Height $H -Theme $theme
+$script:form  = $form
+
+$form.Controls.Add((New-CcHeader -Text $p.appName -Theme $theme -Width $W))
+
+$title           = New-Object System.Windows.Forms.Label
+$title.Text      = [string]$p.title
+$title.ForeColor = $theme.Text
+$title.Font      = New-Object System.Drawing.Font('Segoe UI', 11, [System.Drawing.FontStyle]::Bold)
+$title.Location  = New-Object System.Drawing.Point(18, 34)
+$title.Size      = New-Object System.Drawing.Size(($W - 36), 24)
+$title.BackColor = [System.Drawing.Color]::Transparent
+$form.Controls.Add($title)
+
+# Scrollable read-only body: long bash commands and big diffs stay legible
+# without truncation.
+$box              = New-Object System.Windows.Forms.TextBox
+$box.Multiline    = $true
+$box.ReadOnly     = $true
+$box.ScrollBars   = 'Vertical'
+$box.WordWrap     = $true
+$box.BorderStyle  = 'FixedSingle'
+$box.BackColor    = $theme.Panel
+$box.ForeColor    = $theme.Text
+$box.Font         = New-Object System.Drawing.Font('Consolas', 9.5)
+$box.Text         = [string]$p.body
+$box.Location     = New-Object System.Drawing.Point(18, 66)
+$box.Size         = New-Object System.Drawing.Size(($W - 36), 148)
+$box.TabStop      = $false
 $form.Controls.Add($box)
 
-# 用 $this.Tag 传递按钮语义，避免 GetNewClosure 的作用域坑
 $onClick = { $script:result = $this.Tag; $script:form.Close() }
 
-$deny          = New-Object System.Windows.Forms.Button
-$deny.Text     = '拒绝'
-$deny.Tag      = 'deny'
-$deny.Size     = New-Object System.Drawing.Size(120, 32)
-$deny.Location = New-Object System.Drawing.Point(364, 316)
-$deny.Anchor   = 'Bottom,Right'
-$deny.Add_Click($onClick)
-$form.Controls.Add($deny)
+$y = $H - 50
 
-$allow          = New-Object System.Windows.Forms.Button
-$allow.Text     = '允许'
-$allow.Tag      = 'allow'
-$allow.Size     = New-Object System.Drawing.Size(120, 32)
-$allow.Location = New-Object System.Drawing.Point(492, 316)
-$allow.Anchor   = 'Bottom,Right'
+$allow          = New-CcButton -Text $p.labels.allow -Tag 'allow' -Theme $theme -Primary -Width 104
+$allow.Location = New-Object System.Drawing.Point(($W - 122), $y)
 $allow.Add_Click($onClick)
 $form.Controls.Add($allow)
 
+$deny           = New-CcButton -Text $p.labels.deny -Tag 'deny' -Theme $theme -Width 88
+$deny.Location  = New-Object System.Drawing.Point(($W - 218), $y)
+$deny.Add_Click($onClick)
+$form.Controls.Add($deny)
+
 if ($p.allowAlways) {
-  $always          = New-Object System.Windows.Forms.Button
-  $always.Text     = '总是允许'
-  $always.Tag      = 'always'
-  $always.Size     = New-Object System.Drawing.Size(120, 32)
-  $always.Location = New-Object System.Drawing.Point(236, 316)
-  $always.Anchor   = 'Bottom,Right'
+  $always          = New-CcButton -Text $p.labels.always -Tag 'always' -Theme $theme -Width 108
+  $always.Location = New-Object System.Drawing.Point(18, $y)
   $always.Add_Click($onClick)
   $form.Controls.Add($always)
 }
 
 $form.AcceptButton = $allow
 $form.CancelButton = $deny
-$form.Add_Shown({ $script:form.Activate() })
+$form.Add_Shown({ $script:form.Activate(); $allow.Focus() })
 [void]$form.ShowDialog()
 
 @{ result = $script:result } | ConvertTo-Json -Compress

@@ -1,5 +1,8 @@
 param([Parameter(Mandatory=$true)][string]$ParamsPath)
 
+# Pure ASCII only -- see _style.ps1 for why. Display text comes from
+# $ParamsPath, which is read as UTF-8 below.
+
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName System.Windows.Forms
@@ -14,7 +17,8 @@ $icon.BalloonTipTitle = [string]$p.title
 $icon.BalloonTipText  = [string]$p.body
 $icon.ShowBalloonTip(5000)
 
-# NotifyIcon 的气泡依赖进程存活：立即退出气泡就不显示。
+# The balloon lives only as long as this process: exit immediately and it
+# never renders.
 Start-Sleep -Milliseconds 1500
 $icon.Visible = $false
 $icon.Dispose()

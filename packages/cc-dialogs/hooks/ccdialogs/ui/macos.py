@@ -2,7 +2,9 @@
 
 import subprocess
 
-_TRUNCATE = 2000  # display dialog 有实际长度限制
+from .. import labels
+
+_TRUNCATE = 2000  # display dialog has a practical length limit
 
 
 def _osa(script):
@@ -23,29 +25,29 @@ def _q(s):
     return (s or "").replace("\\", "\\\\").replace('"', '\\"')
 
 
-def _clip(text):
+def _clip(text, lb):
     text = text or ""
     if len(text) <= _TRUNCATE:
         return text
-    return text[:_TRUNCATE] + "\n…（还有 %d 字符，完整内容见终端）" % (
-        len(text) - _TRUNCATE)
+    return text[:_TRUNCATE] + lb["truncated"].format(n=len(text) - _TRUNCATE)
 
 
 def ask_permission(title, body, allow_always):
-    buttons = ['"拒绝"', '"总是允许"', '"允许"'] if allow_always else ['"拒绝"', '"允许"']
+    lb = labels.of(title, body)
+    # Order matters: AppleScript returns the button's own text, and "always"
+    # must be tested before "allow" when one label contains the other.
+    order = ["deny", "always", "allow"] if allow_always else ["deny", "allow"]
+    buttons = ", ".join('"%s"' % _q(lb[k]) for k in order)
     script = (
-        'display dialog "%s" with title "%s" buttons {%s} default button "允许"'
-        % (_q(_clip(body)), _q(title), ", ".join(buttons))
+        'display dialog "%s" with title "%s" buttons {%s} default button "%s"'
+        % (_q(_clip(body, lb)), _q(title), buttons, _q(lb["allow"]))
     )
     out = _osa(script)
     if out is None:
         return "cancel"
-    if "总是允许" in out:
-        return "always"
-    if "允许" in out:
-        return "allow"
-    if "拒绝" in out:
-        return "deny"
+    for key in ("always", "deny", "allow"):
+        if key in order and lb[key] in out:
+            return key
     return "cancel"
 
 
