@@ -5,9 +5,9 @@
   },
   "plugins": [
     {
-      "name": "",
-      "source": "",
-      "description": ""
+      "name": "cc-dialogs",
+      "source": "./packages/cc-dialogs",
+      "description": "把 Claude Code 的终端交互替换为 macOS / Windows 原生对话框"
     }
   ]
 }
