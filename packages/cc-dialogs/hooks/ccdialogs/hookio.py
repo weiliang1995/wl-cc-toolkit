@@ -19,7 +19,10 @@ def run(handler):
     result = None
     try:
         if not disabled():
-            result = handler(json.loads(sys.stdin.read()))
+            # 有些调用方（如 PowerShell 管道）会在前面塞一个 UTF-8 BOM，
+            # json.loads 会直接失败。
+            raw = sys.stdin.read().lstrip("﻿").strip()
+            result = handler(json.loads(raw)) if raw else None
     except BaseException:
         result = None
 

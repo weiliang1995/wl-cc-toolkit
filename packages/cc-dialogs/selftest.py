@@ -75,6 +75,46 @@ def test_same_window():
           focus.same_window({"app": VSCODE}, {"app": VSCODE}), True)
 
 
+def _run_hook(handler, stdin_text):
+    """跑一次 hookio.run，返回 (exit_code, stdout)。"""
+    import io
+    from ccdialogs import hookio
+    real_in, real_out = sys.stdin, sys.stdout
+    sys.stdin, sys.stdout = io.StringIO(stdin_text), io.StringIO()
+    try:
+        hookio.run(handler)
+    except SystemExit as e:
+        return e.code, sys.stdout.getvalue()
+    finally:
+        captured = sys.stdout
+        sys.stdin, sys.stdout = real_in, real_out
+    return None, captured.getvalue()
+
+
+def test_hookio():
+    print("hookio（降级铁律）:")
+    check("正常返回值写成 JSON",
+          _run_hook(lambda e: {"ok": e["v"]}, '{"v":1}'), (0, '{"ok": 1}'))
+    # PowerShell 管道会在前面塞 BOM，json.loads 会噎住
+    check("容忍 stdin 前面的 UTF-8 BOM",
+          _run_hook(lambda e: {"ok": 1}, '﻿{"v":1}\n'), (0, '{"ok": 1}'))
+    check("handler 抛异常也 exit 0 且无输出",
+          _run_hook(lambda e: 1 / 0, "{}"), (0, ""))
+    check("畸形 JSON 也 exit 0 且无输出",
+          _run_hook(lambda e: {"x": 1}, "not json"), (0, ""))
+    check("空 stdin 也 exit 0 且无输出",
+          _run_hook(lambda e: {"x": 1}, ""), (0, ""))
+    check("返回 None 时不输出",
+          _run_hook(lambda e: None, "{}"), (0, ""))
+
+    os.environ["CC_DIALOGS"] = "off"
+    try:
+        check("总开关关闭时 handler 不执行",
+              _run_hook(lambda e: 1 / 0, "{}"), (0, ""))
+    finally:
+        os.environ.pop("CC_DIALOGS", None)
+
+
 def test_ui():
     from ccdialogs import ui
     print("ui（需要人工确认）:")
@@ -95,6 +135,7 @@ def test_ui():
 if __name__ == "__main__":
     test_segments()
     test_same_window()
+    test_hookio()
     if "--ui" in sys.argv:
         test_ui()
     print()
