@@ -242,8 +242,16 @@ CC 对"hook 无输出"的解释是"不做决定，走正常流程"。因此脚�
 
 两道前置闸门（避免每次白跑子进程）：
 
-- **无 GUI 提前退出**：macOS 检测 `SSH_TTY` / `SSH_CONNECTION`；Windows 检测 `SESSIONNAME` 非 `Console` 且非 RDP
 - **总开关**：环境变量 `CC_DIALOGS=off` 一票否决，供批处理场景使用
+- **无 GUI 提前退出**：
+  - macOS：检测 `SSH_TTY` / `SSH_CONNECTION`，命中即退出
+  - **Windows：不做预检**，直接尝试弹窗，失败落入静默退出
+
+**为什么 Windows 不预检**：判据应是「有没有桌面可画」，而非「本地还是远程」。
+RDP 会话拥有完整桌面，对话框与通知均正常工作（画面传到远端而已），
+因此**不能**用 `SESSIONNAME != Console` 排除 RDP —— 那会把一个能用的场景关掉。
+真正无桌面的是 SSH 连入 Windows，而这种情况 WinForms 会直接抛异常，
+由降级铁律兜住即可。为省一次子进程而引入误判不划算。
 
 所有 hook 的 `timeout` 统一 600 秒。
 
@@ -272,17 +280,19 @@ CC 对"hook 无输出"的解释是"不做决定，走正常流程"。因此脚�
 
 建这个包**同时解锁仓库根部的 `.claude-plugin/marketplace.json`** —— `/plugin-dev` 与 `/publish` 两个命令均依赖它，目前为空。
 
-文件已存在于仓库根部，实际 schema 如下（`owner` 是**字符串**，不是对象）：
+文件已存在于仓库根部：
 
 ```json
 {
   "name": "wl-cc-toolkit",
-  "owner": "wl95dev",
+  "owner": {"name": "weiliang1995"},
   "plugins": [
     {"name": "", "source": "", "description": ""}
   ]
 }
 ```
+
+`owner` 是**对象**，不是字符串。
 
 实现时需填入 cc-dialogs 条目：
 

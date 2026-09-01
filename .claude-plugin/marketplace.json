@@ -1,6 +1,8 @@
 {
   "name": "wl-cc-toolkit",
-  "owner": "wl95dev",
+  "owner": {
+    "name": "weiliang1995"
+  },
   "plugins": [
     {
       "name": "",
