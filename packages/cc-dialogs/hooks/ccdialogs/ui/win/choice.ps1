@@ -14,7 +14,7 @@ $theme          = $script:CcTheme
 $script:picked  = @()
 
 $options = @($p.options)
-$W       = 470
+$W       = $theme.Width
 
 # Grow with the option count, but stay a panel rather than a window.
 $rowH    = 26
@@ -23,13 +23,14 @@ $H       = 118 + $listH + 54
 
 $form        = New-CcToastForm -Title $p.appName -Width $W -Height $H -Theme $theme
 $script:form = $form
+Add-CcAutoClose -Form $form -Theme $theme
 
 $form.Controls.Add((New-CcHeader -Text $p.appName -Theme $theme -Width $W))
 
 $prompt           = New-Object System.Windows.Forms.Label
 $prompt.Text      = [string]$p.prompt
 $prompt.ForeColor = $theme.Text
-$prompt.Font      = New-Object System.Drawing.Font('Segoe UI', 11, [System.Drawing.FontStyle]::Bold)
+$prompt.Font      = New-Object System.Drawing.Font($theme.Font, ($theme.FontSize + 1.25), [System.Drawing.FontStyle]::Bold)
 $prompt.Location  = New-Object System.Drawing.Point(18, 34)
 $prompt.Size      = New-Object System.Drawing.Size(($W - 36), 48)
 $prompt.BackColor = [System.Drawing.Color]::Transparent
@@ -47,7 +48,7 @@ $list.Size        = New-Object System.Drawing.Size(($W - 36), $listH)
 $list.BackColor   = $theme.Panel
 $list.ForeColor   = $theme.Text
 $list.BorderStyle = 'FixedSingle'
-$list.Font        = New-Object System.Drawing.Font('Segoe UI', 10)
+$list.Font        = New-Object System.Drawing.Font($theme.Font, ($theme.FontSize + 0.25))
 $list.ItemHeight  = 22
 foreach ($o in $options) { [void]$list.Items.Add([string]$o) }
 if (-not $p.multi -and $list.Items.Count -gt 0) { $list.SelectedIndex = 0 }

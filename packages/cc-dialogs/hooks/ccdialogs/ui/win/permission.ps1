@@ -13,18 +13,19 @@ $script:CcTheme = Get-CcTheme
 $theme          = $script:CcTheme
 $script:result  = 'cancel'
 
-$W = 470
+$W = $theme.Width
 $H = 300
 
 $form         = New-CcToastForm -Title $p.appName -Width $W -Height $H -Theme $theme
 $script:form  = $form
+Add-CcAutoClose -Form $form -Theme $theme
 
 $form.Controls.Add((New-CcHeader -Text $p.appName -Theme $theme -Width $W))
 
 $title           = New-Object System.Windows.Forms.Label
 $title.Text      = [string]$p.title
 $title.ForeColor = $theme.Text
-$title.Font      = New-Object System.Drawing.Font('Segoe UI', 11, [System.Drawing.FontStyle]::Bold)
+$title.Font      = New-Object System.Drawing.Font($theme.Font, ($theme.FontSize + 1.25), [System.Drawing.FontStyle]::Bold)
 $title.Location  = New-Object System.Drawing.Point(18, 34)
 $title.Size      = New-Object System.Drawing.Size(($W - 36), 24)
 $title.BackColor = [System.Drawing.Color]::Transparent
@@ -40,7 +41,7 @@ $box.WordWrap     = $true
 $box.BorderStyle  = 'FixedSingle'
 $box.BackColor    = $theme.Panel
 $box.ForeColor    = $theme.Text
-$box.Font         = New-Object System.Drawing.Font('Consolas', 9.5)
+$box.Font         = New-Object System.Drawing.Font($theme.MonoFont, ($theme.FontSize - 0.25))
 $box.Text         = [string]$p.body
 $box.Location     = New-Object System.Drawing.Point(18, 66)
 $box.Size         = New-Object System.Drawing.Size(($W - 36), 148)

@@ -115,21 +115,42 @@ def test_hookio():
         os.environ.pop("CC_DIALOGS", None)
 
 
+_SAMPLE_CMD = (
+    "Bash\n\n"
+    "for f in src/**/*.py; do\n"
+    '  black --line-length 100 "$f"\n'
+    "  ruff check --fix \"$f\"\n"
+    "done\n\n"
+    "Format and lint every Python file under src/"
+)
+
+
 def test_ui():
+    """Preview the real panels. Use this to iterate on style.json."""
     from ccdialogs import ui
-    print("ui（需要人工确认）:")
-    print("  前台窗口 -> %r" % (ui.frontmost(),))
-    print("  弹权限对话框…")
-    print("  你点了 -> %r" % ui.ask_permission(
-        "cc-dialogs 自检", "这是一条测试内容。\n随便点一个按钮。", True))
-    print("  弹单选框…")
-    print("  你选了 -> %r" % ui.ask_choice(
-        "自检", "随便选一个", ["选项 A", "选项 B", "选项 C"], False))
-    print("  弹多选框…")
-    print("  你选了 -> %r" % ui.ask_choice(
-        "自检", "可以多选", ["选项 A", "选项 B", "选项 C"], True))
-    print("  发通知…")
-    ui.notify("cc-dialogs", "自检通知，右下角应该看得到")
+    print("ui (needs your eyes):")
+    print("  frontmost -> %r" % (ui.frontmost(),))
+
+    print("  permission panel, English...")
+    print("    clicked -> %r" % ui.ask_permission(
+        "Permission needed", _SAMPLE_CMD, True))
+
+    print("  permission panel, Chinese...")
+    print("    clicked -> %r" % ui.ask_permission(
+        "请求权限", "Bash\n\nrm -rf build/\n\n清理构建产物", True))
+
+    print("  single select...")
+    print("    picked -> %r" % ui.ask_choice(
+        "Self-check", "Pick one option to check the layout",
+        ["Alpha — the first", "Beta — the second", "Gamma — the third"], False))
+
+    print("  multi select...")
+    print("    picked -> %r" % ui.ask_choice(
+        "自检", "这是一道中文多选题，看看有没有乱码",
+        ["选项甲", "选项乙", "选项丙"], True))
+
+    print("  notification...")
+    ui.notify("cc-dialogs", "Self-check notification")
 
 
 if __name__ == "__main__":
