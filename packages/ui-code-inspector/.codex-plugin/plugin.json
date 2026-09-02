@@ -1,0 +1,39 @@
+{
+  "name": "ui-code-inspector",
+  "version": "1.0.0",
+  "description": "Guides adding a dev-only UI-to-source inspector to Vite React or Next.js projects",
+  "author": {
+    "name": "weiliang1995",
+    "email": "wlkuik@gmail.com",
+    "url": "https://github.com/weiliang1995"
+  },
+  "homepage": "https://github.com/weiliang1995/wl-cc-toolkit",
+  "repository": "https://github.com/weiliang1995/wl-cc-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "inspector",
+    "vite",
+    "react",
+    "nextjs",
+    "devtools",
+    "jsx"
+  ],
+  "skills": "./skills/",
+  "hooks": {},
+  "interface": {
+    "displayName": "UI Code Inspector",
+    "shortDescription": "Click a rendered UI element to open its source line in your editor",
+    "longDescription": "Adds a dev-only inspector to Vite React or Next.js projects: hold Alt/Option to enter inspect mode, hover to outline an element and see its source label, click to open file:line:column in your editor. Compile-time metadata injection plus a framework-neutral runtime, stripped from production builds.",
+    "developerName": "weiliang1995",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Add a click-to-source UI inspector to this project.",
+      "Review the UI inspector setup in this repo."
+    ],
+    "websiteURL": "https://github.com/weiliang1995/wl-cc-toolkit"
+  }
+}
