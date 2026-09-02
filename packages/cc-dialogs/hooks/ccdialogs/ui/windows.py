@@ -1,6 +1,8 @@
-"""Windows 后端：把参数写成 JSON 临时文件，交给 ps1 执行，从 stdout 读回 JSON。
+"""Windows backend: write the params to a temp JSON file, run a ps1 against
+it, and read JSON back off stdout.
 
-不在 Python 里拼 PowerShell 字符串 —— 多层转义极易出错且难以调试。
+PowerShell strings are never assembled in Python -- several layers of quoting
+are easy to get wrong and painful to debug.
 """
 
 import json
@@ -13,7 +15,8 @@ from .. import labels
 
 _PS_DIR = pathlib.Path(__file__).parent / "win"
 
-# 弹窗要等用户点击，不设超时；探测类调用必须快，避免拖慢每一轮对话。
+# A panel waits for a click, so it gets no timeout. Probes must be fast --
+# they run on every turn.
 _DIALOG_TIMEOUT = None
 _PROBE_TIMEOUT = 10
 
@@ -61,7 +64,7 @@ def ask_choice(title, prompt, options, multi):
                 "labels": {k: lb[k] for k in ("ok", "cancel")}},
                timeout=_DIALOG_TIMEOUT)
     picked = r.get("picked") or []
-    # ConvertTo-Json 会把单元素数组退化成标量
+    # ConvertTo-Json collapses a one-element array into a scalar
     if isinstance(picked, str):
         picked = [picked]
     return [str(x) for x in picked]

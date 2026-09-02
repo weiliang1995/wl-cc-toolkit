@@ -1,30 +1,31 @@
 # cc-toolkit
 
-个人开发工具库，存放 Claude Code skills、工作流和小插件。
+Personal toolbox holding Claude Code skills, workflows and small plugins.
 
-## 目录结构
+## Layout
 
 ```
 cc-toolkit/
-├── .claude/            # Claude Code 配置（settings.json、hooks、commands）
-├── .claude-plugin/     # 插件市场定义（marketplace.json）
-├── .githooks/          # Git hooks 脚本
-├── docs/               # 文档
-├── packages/           # 可复用包 / 小插件
-├── scripts/            # 工具脚本
-└── skills/             # Claude Code skill 文件（.md）
+├── .claude/            # Claude Code config (settings.json, hooks, commands)
+├── .claude-plugin/     # Plugin marketplace definition (marketplace.json)
+├── .githooks/          # Git hook scripts
+├── docs/               # Documentation
+├── packages/           # Reusable packages / plugins
+└── scripts/            # Utility scripts
 ```
 
-## 命令
+Skills ship inside their plugin, at `packages/<plugin>/skills/<skill-name>/SKILL.md`.
 
-| 命令 | 作用 |
-|------|------|
-| `/plugin-dev <name> [local\|remote\|status]` | 本地开发模式：软链插件到 cache，免安装调试 |
-| `/publish <name> <patch\|minor\|major>` | 发布正式版本：升版本号、生成 changelog、打 tag 推送 |
-| `/update-catalog [--prune]` | 扫描目录，增量更新 CATALOG.md |
+## Commands
 
-## 快速开始
+| Command | Purpose |
+|---------|---------|
+| `/plugin-dev <name> [local\|remote\|status]` | Local dev mode: symlink a plugin into the cache and debug it without installing |
+| `/publish <name> <patch\|minor\|major>` | Ship a release: bump the version, generate the changelog, tag and push |
+| `/update-catalog [--prune]` | Scan the directories and incrementally update CATALOG.md |
 
-查看 [CATALOG.md](CATALOG.md) 了解所有可用 skills 和工具。
+## Getting started
 
-贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+See [CATALOG.md](CATALOG.md) for every available skill and tool.
+
+For how to contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).

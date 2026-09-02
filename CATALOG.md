@@ -1,25 +1,26 @@
 # CATALOG.md
 
-所有 skills、插件和工具的索引。
+Index of all skills, plugins and tools.
 
 ## Skills
 
-| 文件 | 描述 | 调用方式 |
-|------|------|----------|
-| _(待添加)_ | | |
+| File | Description | Invocation |
+|------|-------------|------------|
+| `packages/ui-code-inspector/skills/ui-code-inspector/SKILL.md` | Adds a dev-only click-the-UI-to-open-the-source inspector to Vite React / Next.js projects | `/ui-code-inspector` (install the ui-code-inspector plugin first) |
 
-## Packages / 插件
+## Packages / Plugins
 
-| 目录 | 描述 |
-|------|------|
-| _(待添加)_ | |
+| Directory | Description |
+|-----------|-------------|
+| `packages/cc-dialogs` | Replaces Claude Code's terminal prompts with native macOS / Windows dialogs |
+| `packages/ui-code-inspector` | Plugin wrapper that ships the `/ui-code-inspector` skill |
 
 ## Scripts
 
-| 文件 | 描述 |
-|------|------|
-| _(待添加)_ | |
+| File | Description |
+|------|-------------|
+| _(none yet)_ | |
 
 ---
 
-> 每次新增内容请更新此文件。
+> Update this file whenever something is added.

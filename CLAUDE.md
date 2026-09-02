@@ -1,22 +1,23 @@
 # CLAUDE.md
 
-Claude Code 在此仓库中的行为指南。
+Guidance for Claude Code in this repository.
 
-## 仓库用途
+## What this repo is
 
-这是 weiliang 的个人开发工具库，包含：
-- **skills/** — Claude Code skill 文件，可通过 `/skill-name` 调用
-- **packages/** — 可复用的小插件和工具包
-- **scripts/** — 自动化脚本
-- **workflows/** — 工作流定义
+weiliang's personal development toolbox, containing:
 
-## 约定
+- **packages/** — reusable plugins and small tool packages; Claude Code skills ship inside them
+- **scripts/** — automation scripts
+- **workflows/** — workflow definitions
 
-- Skill 文件用 Markdown，放在 `skills/` 目录，文件名即调用名
-- 脚本优先用 PowerShell（Windows 环境），跨平台脚本用 bash
-- 文档放 `docs/`，更新 `CATALOG.md` 以保持索引同步
+## Conventions
 
-## 开发原则
+- Skills are Markdown, at `packages/<plugin>/skills/<skill-name>/SKILL.md`; the directory name is the invocation name
+- Every plugin needs `.claude-plugin/plugin.json` and an entry in `.claude-plugin/marketplace.json`
+- Prefer PowerShell for scripts (Windows environment); use bash for cross-platform ones
+- Documentation goes in `docs/`; update `CATALOG.md` to keep the index in sync
 
-- 保持每个 skill/plugin 职责单一
-- 新增内容必须更新 CATALOG.md
+## Development principles
+
+- Keep each skill/plugin to a single responsibility
+- Anything new must be added to CATALOG.md

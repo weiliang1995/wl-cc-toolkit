@@ -1,8 +1,14 @@
 """PermissionRequest hook: replace the terminal y/n prompt with a native panel.
 
-Output schema (note that `behaviour` is the British spelling):
+Output schema:
   {"hookSpecificOutput": {"hookEventName": "PermissionRequest",
-                          "decision": {"behaviour": "allow"|"deny", ...}}}
+                          "decision": {"behavior": "allow"|"deny", ...}}}
+
+`behavior` is the American spelling and Claude Code reads that key only. A
+`behaviour` there is not a validation error: the key simply reads back
+undefined, the decision is discarded, and the terminal prompt appears as if
+no hook had run -- which is exactly what "clicking the panel does nothing"
+looks like from the outside.
 """
 
 import json
@@ -11,7 +17,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from ccdialogs import hookio, labels, ui
+from ccdialogs import focus, hookio, labels, ui
 
 
 def _body(event):
@@ -30,6 +36,9 @@ def _body(event):
 
 
 def handle(event):
+    if focus.user_is_watching(event.get("session_id")):
+        return None  # you are right here -- the terminal prompt is fine
+
     suggestions = event.get("permission_suggestions") or []
     body = _body(event)
     lb = labels.of(body)
@@ -38,13 +47,13 @@ def handle(event):
         lb["permission_title"], body, bool(suggestions))
 
     if choice == "allow":
-        decision = {"behaviour": "allow"}
+        decision = {"behavior": "allow"}
     elif choice == "always":
         # Passed straight through -- this script neither parses nor builds
         # permission rules.
-        decision = {"behaviour": "allow", "updatedPermissions": suggestions}
+        decision = {"behavior": "allow", "updatedPermissions": suggestions}
     elif choice == "deny":
-        decision = {"behaviour": "deny",
+        decision = {"behavior": "deny",
                     "message": "User denied via native dialog"}
     else:
         return None  # cancelled -> no decision -> fall back to the terminal

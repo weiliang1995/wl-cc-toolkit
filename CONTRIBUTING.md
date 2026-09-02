@@ -1,36 +1,41 @@
 # CONTRIBUTING.md
 
-## 新增 Skill
+## Adding a skill
 
-1. 在 `skills/` 下创建 `<skill-name>.md`
-2. 文件顶部加 frontmatter：
+Skills ship inside a plugin, so a new skill either joins an existing plugin or gets a
+new one (see below).
+
+1. Create `packages/<plugin-name>/skills/<skill-name>/SKILL.md`
+2. Put frontmatter at the top of the file:
 
 ```yaml
 ---
 name: skill-name
-description: 一句话说明用途和触发时机
+description: One line covering what it does and when it triggers
 ---
 ```
 
-3. 正文写清楚 skill 的步骤或指令
-4. 在 [CATALOG.md](CATALOG.md) 的 Skills 表格中添加一行
+3. Write the skill's steps or instructions in the body
+4. Add a row to the Skills table in [CATALOG.md](CATALOG.md)
 
-## 新增 Package / 插件
+## Adding a package / plugin
 
-1. 在 `packages/<package-name>/` 下创建插件目录
-2. 包含 `README.md` 说明用途和使用方式
-3. 在 [CATALOG.md](CATALOG.md) 的 Packages 表格中添加一行
+1. Create the plugin directory at `packages/<package-name>/`
+2. Add `.claude-plugin/plugin.json` with `name`, `version` and `description`
+3. Include a `README.md` covering what it is and how to use it
+4. Register it in the `plugins` array of [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json)
+5. Add a row to the Packages table in [CATALOG.md](CATALOG.md)
 
-## 新增 Script
+## Adding a script
 
-1. 脚本放入 `scripts/`
-2. 文件头部注释说明用途、参数、示例
-3. 在 [CATALOG.md](CATALOG.md) 的 Scripts 表格中添加一行
+1. Put the script in `scripts/`
+2. Use a header comment covering its purpose, arguments and an example
+3. Add a row to the Scripts table in [CATALOG.md](CATALOG.md)
 
-## Commit 规范
+## Commit conventions
 
 ```
-feat: 新增 xxx skill
-fix: 修复 xxx 问题
-docs: 更新 CATALOG.md
+feat: add the xxx skill
+fix: fix the xxx problem
+docs: update CATALOG.md
 ```

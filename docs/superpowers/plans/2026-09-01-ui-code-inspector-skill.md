@@ -75,7 +75,7 @@ Do not remove existing entries or sections.
 - Consumes: The edited files.
 - Produces: Verification evidence.
 
-- [ ] **Step 1: Confirm files exist**
+- [x] **Step 1: Confirm files exist**
 
 Run:
 
@@ -86,7 +86,7 @@ Test-Path CATALOG.md
 
 Expected: both commands return `True`.
 
-- [ ] **Step 2: Confirm skill frontmatter is present**
+- [x] **Step 2: Confirm skill frontmatter is present**
 
 Run:
 
@@ -96,7 +96,7 @@ Get-Content -First 5 skills/ui-code-inspector.md
 
 Expected: output includes `name: ui-code-inspector`.
 
-- [ ] **Step 3: Confirm catalog does not publish the draft skill**
+- [x] **Step 3: Confirm catalog does not publish the draft skill**
 
 Run:
 

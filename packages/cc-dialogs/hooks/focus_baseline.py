@@ -1,9 +1,10 @@
-"""UserPromptSubmit hook：记录焦点基准。
+"""UserPromptSubmit hook: record the focus baseline.
 
-用户按下回车提交 prompt 的那一刻，其窗口必然是前台的 —— 这是整个焦点
-判定的锚点，无需白名单也无需项目名匹配。
+The moment the user hits enter to submit a prompt, their window is
+necessarily in front. That is the anchor for the whole focus check -- no
+allowlist and no project-name matching needed.
 
-本 hook 不产生任何输出，纯副作用。
+This hook produces no output; it is pure side effect.
 """
 
 import os

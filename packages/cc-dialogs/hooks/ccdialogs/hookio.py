@@ -1,7 +1,8 @@
-"""Hook 入口的 stdin/stdout 协议与降级铁律。
+"""The stdin/stdout protocol for hook entry points, and the fallback rule.
 
-铁律：任何异常都以 exit 0 + 空 stdout 收场。Claude Code 把「无输出」解释为
-「hook 不做决定」，于是自动回退到终端 TUI —— 脚本崩溃永远不会卡住会话。
+The rule: any failure ends in exit 0 with empty stdout. Claude Code reads "no
+output" as "the hook made no decision" and falls back to the terminal TUI --
+so a crashing script can never wedge the session.
 """
 
 import json
@@ -10,18 +11,26 @@ import sys
 
 
 def disabled():
-    """总开关：CC_DIALOGS=off 时禁用全部对话框。"""
+    """Master switch: CC_DIALOGS=off disables every dialog."""
     return os.environ.get("CC_DIALOGS", "").strip().lower() == "off"
 
 
 def run(handler):
-    """读 stdin JSON 交给 handler，把返回值写为 stdout JSON。永不抛出。"""
+    """Read stdin JSON, pass it to handler, write the result as stdout JSON.
+
+    Never raises.
+    """
     result = None
     try:
         if not disabled():
-            # 有些调用方（如 PowerShell 管道）会在前面塞一个 UTF-8 BOM，
-            # json.loads 会直接失败。
-            raw = sys.stdin.read().lstrip("﻿").strip()
+            # Read bytes, not text: Claude Code always sends UTF-8, but
+            # sys.stdin decodes with the locale codec (cp936 on a Chinese
+            # Windows), which silently mangles every non-ASCII character --
+            # and a mangled question text no longer matches the key Claude
+            # Code looks the answer up under. Some callers (PowerShell
+            # pipelines, for one) also prepend a UTF-8 BOM, which makes
+            # json.loads fail outright.
+            raw = sys.stdin.buffer.read().decode("utf-8").lstrip("﻿").strip()
             result = handler(json.loads(raw)) if raw else None
     except BaseException:
         result = None

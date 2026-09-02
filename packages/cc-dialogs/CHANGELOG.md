@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.0 - 2026-09-02
+
+### Added
+
+- 角落面板样式，可通过 `%LOCALAPPDATA%\cc-dialogs\style.json` 覆写（见 `STYLE.md`）
+- 按内容语言自动选择按钮标签
+
+### Fixed
+
+- 自动关闭定时器会让按钮失效
+- Windows 下中文乱码
+- 容忍 stdin 的 UTF-8 BOM
+
+### 备注
+
+- macOS 后端**仍未在真机验证**；Windows 为已验证路径
+
 ## 0.1.0 - 2026-09-01
 
 ### Added

@@ -14,7 +14,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from ccdialogs import hookio, labels, ui
+from ccdialogs import focus, hookio, labels, ui
 
 
 def build_answers(questions, picks):
@@ -32,6 +32,8 @@ def handle(event):
     questions = tool_input.get("questions") or []
     if not questions:
         return None
+    if focus.user_is_watching(event.get("session_id")):
+        return None  # you are right here -- the terminal picker is fine
 
     picks = {}
     for i, q in enumerate(questions):

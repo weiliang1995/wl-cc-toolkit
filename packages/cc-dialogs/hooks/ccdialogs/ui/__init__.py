@@ -1,6 +1,7 @@
-"""四个 UI 原语的抽象与平台分发。
+"""The four UI primitives, and dispatch to the platform backend.
 
-平台差异全部隔离在本包内；上层只调用这四个函数。
+Every platform difference is confined to this package; callers only ever use
+these four functions.
 """
 
 import importlib
@@ -17,12 +18,12 @@ def backend():
 
 
 def ask_permission(title, body, allow_always):
-    """返回 'allow' / 'always' / 'deny' / 'cancel'。"""
+    """Return 'allow' / 'always' / 'deny' / 'cancel'."""
     return backend().ask_permission(title, body, allow_always)
 
 
 def ask_choice(title, prompt, options, multi):
-    """返回选中的 label 列表；取消时返回 []。"""
+    """Return the chosen labels; [] when cancelled."""
     return backend().ask_choice(title, prompt, options, multi)
 
 
@@ -31,5 +32,5 @@ def notify(title, body):
 
 
 def frontmost():
-    """返回 {'app': str, 'title': str}；取不到时返回 None。"""
+    """Return {'app': str, 'title': str}, or None when unavailable."""
     return backend().frontmost()

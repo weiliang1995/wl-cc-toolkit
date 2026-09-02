@@ -17,8 +17,13 @@ def should_notify(session_id, current):
     """Only when the user genuinely switched away. When unsure, stay quiet."""
     baseline = state.load(session_id)
     if not baseline or not current:
+        state.note("quiet: baseline=%r current=%r" % (baseline, current))
         return False
-    return not focus.same_window(baseline, current)
+    verdict = not focus.same_window(baseline, current)
+    # The titles this compared are gone the moment a window changes, so a
+    # misfire is unreproducible unless it was written down as it happened.
+    state.note("notify=%s baseline=%r current=%r" % (verdict, baseline, current))
+    return verdict
 
 
 def handle(event):

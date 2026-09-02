@@ -1,12 +1,14 @@
-"""cc-dialogs 自检：验证焦点比对逻辑与 UI 原语。
+"""cc-dialogs self-check: exercises the focus comparison and the UI primitives.
 
-    py -3 packages/cc-dialogs/selftest.py          # 只跑纯逻辑，两秒
-    py -3 packages/cc-dialogs/selftest.py --ui     # 额外弹出真实对话框
+    py -3 packages/cc-dialogs/selftest.py          # pure logic only, two seconds
+    py -3 packages/cc-dialogs/selftest.py --ui     # also pops the real dialogs
 
-焦点比对是唯一「错了也看不见」的部分 —— 判错时你只会觉得通知有点怪，
-不会知道是哪条规则出的问题。所以它值得留个自检。
+The focus comparison is the one part whose mistakes are invisible -- when it
+misjudges you only notice that notifications feel a bit off, never which rule
+went wrong. That is what earns it a self-check.
 """
 
+import json
 import os
 import sys
 
@@ -32,55 +34,70 @@ def w(app, title):
 
 def test_segments():
     print("segments:")
-    check("破折号切段",
+    check("splits on em dashes",
           focus.segments("a.ts — proj — Visual Studio Code"),
           ["a.ts", "proj", "Visual Studio Code"])
-    check("竖线切段", focus.segments("a | b | c"), ["a", "b", "c"])
-    check("带空格的连字符切段，词内连字符不切",
+    check("splits on pipes", focus.segments("a | b | c"), ["a", "b", "c"])
+    check("splits on spaced hyphens, not intra-word ones",
           focus.segments("my-proj - zsh"), ["my-proj", "zsh"])
-    check("单段", focus.segments("bash"), ["bash"])
-    check("空段被丢弃", focus.segments("a ——  — b"), ["a", "b"])
+    check("single segment", focus.segments("bash"), ["bash"])
+    check("empty segments dropped", focus.segments("a ——  — b"), ["a", "b"])
 
 
 def test_same_window():
     print("same_window:")
-    check("无基准视为在看（宁可漏发）",
+    check("no baseline counts as still watching (prefer missing a notify)",
           focus.same_window(None, w(VSCODE, "x")), True)
-    check("拿不到当前窗口视为在看",
+    check("no current window counts as still watching",
           focus.same_window(w(VSCODE, "x"), None), True)
-    check("完全相同", focus.same_window(w(TERM, "proj"), w(TERM, "proj")), True)
-    check("app 不同即失焦",
+    check("identical", focus.same_window(w(TERM, "proj"), w(TERM, "proj")), True)
+    check("a different app means focus was lost",
           focus.same_window(w(VSCODE, "p"), w("chrome", "p")), False)
-    check("VS Code 切文件仍是同一窗口",
+    check("switching files in VS Code is still the same window",
           focus.same_window(
               w(VSCODE, "a.ts — proj — Visual Studio Code"),
               w(VSCODE, "b.ts — proj — Visual Studio Code")), True)
-    # 这是「最长公共后缀 + 字符阈值」方案会失手的用例：
-    # 两者共享 " — Visual Studio Code"（21 字符），但项目不同
-    check("不同项目的两个 VS Code 窗口不算同一窗口",
+    # The case a "longest common suffix + character threshold" scheme gets
+    # wrong: both share " — Visual Studio Code" (21 chars) but the projects
+    # differ.
+    check("two VS Code windows on different projects are different windows",
           focus.same_window(
               w(VSCODE, "a.ts — proj — Visual Studio Code"),
               w(VSCODE, "a.ts — other — Visual Studio Code")), False)
-    check("两段式终端标题要求全等",
+    check("two-segment terminal titles must match exactly",
           focus.same_window(w(TERM, "proj — zsh"),
                             w(TERM, "other — zsh")), False)
-    check("两段式终端标题相同",
+    check("identical two-segment terminal titles",
           focus.same_window(w(TERM, "proj — zsh"),
                             w(TERM, "proj — zsh")), True)
-    check("混用分隔符风格",
+    check("mixed separator styles",
           focus.same_window(
               w(VSCODE, "a.ts | proj | Visual Studio Code"),
               w(VSCODE, "b.ts — proj — Visual Studio Code")), True)
-    check("缺 title 键不崩",
+    check("a missing title key does not crash",
           focus.same_window({"app": VSCODE}, {"app": VSCODE}), True)
 
 
-def _run_hook(handler, stdin_text):
-    """跑一次 hookio.run，返回 (exit_code, stdout)。"""
+class _FakeStdin(object):
+    """A stdin stand-in that, like the real one, carries a byte `.buffer`.
+
+    hookio reads the bytes rather than the decoded text, so a StringIO here
+    would let a locale-decoding bug pass the suite unnoticed.
+    """
+
+    def __init__(self, data):
+        import io
+        self.buffer = io.BytesIO(data)
+
+
+def _run_hook(handler, stdin_bytes):
+    """Run hookio.run once and return (exit_code, stdout)."""
     import io
     from ccdialogs import hookio
+    if not isinstance(stdin_bytes, bytes):
+        stdin_bytes = stdin_bytes.encode("utf-8")
     real_in, real_out = sys.stdin, sys.stdout
-    sys.stdin, sys.stdout = io.StringIO(stdin_text), io.StringIO()
+    sys.stdin, sys.stdout = _FakeStdin(stdin_bytes), io.StringIO()
     try:
         hookio.run(handler)
     except SystemExit as e:
@@ -92,24 +109,33 @@ def _run_hook(handler, stdin_text):
 
 
 def test_hookio():
-    print("hookio（降级铁律）:")
-    check("正常返回值写成 JSON",
+    print("hookio (the fallback rule):")
+    check("a normal return value is written as JSON",
           _run_hook(lambda e: {"ok": e["v"]}, '{"v":1}'), (0, '{"ok": 1}'))
-    # PowerShell 管道会在前面塞 BOM，json.loads 会噎住
-    check("容忍 stdin 前面的 UTF-8 BOM",
+    # PowerShell pipelines prepend a BOM, which json.loads chokes on
+    check("tolerates a leading UTF-8 BOM on stdin",
           _run_hook(lambda e: {"ok": 1}, '﻿{"v":1}\n'), (0, '{"ok": 1}'))
-    check("handler 抛异常也 exit 0 且无输出",
+    # The regression that broke AskUserQuestion: stdin decoded with the
+    # locale codec (cp936 on a Chinese Windows) mangles every non-ASCII
+    # character, and a mangled question text no longer matches the key
+    # Claude Code looks the answer up under, so the terminal picker just
+    # sits there. Round-tripping the exact string is the whole test.
+    check("Chinese survives stdin verbatim",
+          _run_hook(lambda e: {"q": e["v"]},
+                    u'{"v":"选项栏同步"}'.encode("utf-8")),
+          (0, json.dumps({"q": u"选项栏同步"})))
+    check("a raising handler still exits 0 with no output",
           _run_hook(lambda e: 1 / 0, "{}"), (0, ""))
-    check("畸形 JSON 也 exit 0 且无输出",
+    check("malformed JSON still exits 0 with no output",
           _run_hook(lambda e: {"x": 1}, "not json"), (0, ""))
-    check("空 stdin 也 exit 0 且无输出",
+    check("empty stdin still exits 0 with no output",
           _run_hook(lambda e: {"x": 1}, ""), (0, ""))
-    check("返回 None 时不输出",
+    check("no output when the handler returns None",
           _run_hook(lambda e: None, "{}"), (0, ""))
 
     os.environ["CC_DIALOGS"] = "off"
     try:
-        check("总开关关闭时 handler 不执行",
+        check("the handler does not run when the master switch is off",
               _run_hook(lambda e: 1 / 0, "{}"), (0, ""))
     finally:
         os.environ.pop("CC_DIALOGS", None)
@@ -161,6 +187,6 @@ if __name__ == "__main__":
         test_ui()
     print()
     if _fails:
-        print("%d 项失败：%s" % (len(_fails), ", ".join(_fails)))
+        print("%d failed: %s" % (len(_fails), ", ".join(_fails)))
         sys.exit(1)
-    print("全部通过")
+    print("all passed")

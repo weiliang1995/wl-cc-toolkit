@@ -1,4 +1,4 @@
-"""macOS 后端：全部通过 osascript 调用系统原生 UI。"""
+"""macOS backend: every primitive goes through osascript to the native UI."""
 
 import subprocess
 
@@ -15,13 +15,14 @@ def _osa(script):
     except Exception:
         return None
     if proc.returncode != 0:
-        # 用户取消时 osascript 以非零码退出 —— 视为取消，不是错误
+        # osascript exits non-zero when the user cancels -- that is a cancel,
+        # not an error
         return None
     return (proc.stdout or "").strip()
 
 
 def _q(s):
-    """转义进 AppleScript 字符串字面量。"""
+    """Escape for an AppleScript string literal."""
     return (s or "").replace("\\", "\\\\").replace('"', '\\"')
 
 
