@@ -1,0 +1,18 @@
+{
+  "name": "wl-cc-toolkit",
+  "owner": {
+    "name": "weiliang1995"
+  },
+  "plugins": [
+    {
+      "name": "cc-dialogs",
+      "source": "./packages/cc-dialogs",
+      "description": "Replaces Claude Code's terminal prompts with native macOS / Windows dialogs"
+    },
+    {
+      "name": "ui-code-inspector",
+      "source": "./packages/ui-code-inspector",
+      "description": "Adds a dev-only click-the-UI-to-open-the-source inspector to Vite React / Next.js projects"
+    }
+  ]
+}
