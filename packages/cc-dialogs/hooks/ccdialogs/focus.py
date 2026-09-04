@@ -8,6 +8,12 @@ Not "longest common suffix + character threshold": two VS Code windows open
 on different projects also share " - Visual Studio Code" (21 characters), so
 there is no safe threshold. Splitting on separators distinguishes them
 naturally: proj and other are different segments.
+
+"Window" here means the active view, not the OS window. VS Code puts the
+focused view's name in the title's first segment -- a file name, or the name
+of whichever Claude session owns the focused panel -- so comparing every
+segment also catches the two cases that live inside one OS window: you
+clicked into a file, or you moved to another Claude session's panel.
 """
 
 import re
@@ -36,17 +42,16 @@ def same_window(baseline, current):
 
     bt = baseline.get("title", "") or ""
     ct = current.get("title", "") or ""
-    if bt == ct:
-        return True
 
-    bs, cs = segments(bt), segments(ct)
-    # With three or more segments, drop the first (usually a volatile file
-    # name) and compare the rest. Two or fewer must match exactly: a terminal
-    # title looks like "proj - zsh", and dropping the first segment leaves
-    # "zsh", which would match any window running the same shell.
-    if len(bs) >= 3 and len(cs) >= 3:
-        return bs[1:] == cs[1:]
-    return False
+    # Every segment counts, the first one included. In VS Code that first
+    # segment is the active view -- a file name, or the name of whichever
+    # Claude session owns the focused panel -- so dropping it would make
+    # "I clicked into a file" and "I moved to another Claude panel" both read
+    # as still watching, which is precisely when the dialogs are wanted.
+    #
+    # Comparing segment lists rather than the raw strings keeps the check
+    # immune to how the separator happens to be rendered.
+    return segments(bt) == segments(ct)
 
 
 def user_is_watching(session_id):

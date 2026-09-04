@@ -53,10 +53,24 @@ def test_same_window():
     check("identical", focus.same_window(w(TERM, "proj"), w(TERM, "proj")), True)
     check("a different app means focus was lost",
           focus.same_window(w(VSCODE, "p"), w("chrome", "p")), False)
-    check("switching files in VS Code is still the same window",
+    # The first segment is the active view, and in VS Code the Claude Code
+    # panel puts the session's own name there. Dropping it -- which an earlier
+    # version did -- made "I clicked into a file" and "I moved to another
+    # Claude session" both read as "still watching", which is exactly when the
+    # dialogs are wanted.
+    check("clicking into a file is no longer the same view",
           focus.same_window(
               w(VSCODE, "a.ts — proj — Visual Studio Code"),
-              w(VSCODE, "b.ts — proj — Visual Studio Code")), True)
+              w(VSCODE, "b.ts — proj — Visual Studio Code")), False)
+    check("another Claude panel in the same window is a different view",
+          focus.same_window(
+              w(VSCODE, u"/mcp - wl-skills-hub - Visual Studio Code"),
+              w(VSCODE, u"i18n-cms工作流封装 - wl-skills-hub - Visual Studio Code")),
+          False)
+    check("staying on the session's own panel is the same view",
+          focus.same_window(
+              w(VSCODE, u"/mcp - wl-skills-hub - Visual Studio Code"),
+              w(VSCODE, u"/mcp - wl-skills-hub - Visual Studio Code")), True)
     # The case a "longest common suffix + character threshold" scheme gets
     # wrong: both share " — Visual Studio Code" (21 chars) but the projects
     # differ.
@@ -70,10 +84,12 @@ def test_same_window():
     check("identical two-segment terminal titles",
           focus.same_window(w(TERM, "proj — zsh"),
                             w(TERM, "proj — zsh")), True)
-    check("mixed separator styles",
+    # Comparing segment lists rather than raw strings keeps the check immune
+    # to how the separator happens to be rendered.
+    check("mixed separator styles still compare equal",
           focus.same_window(
               w(VSCODE, "a.ts | proj | Visual Studio Code"),
-              w(VSCODE, "b.ts — proj — Visual Studio Code")), True)
+              w(VSCODE, "a.ts — proj — Visual Studio Code")), True)
     check("a missing title key does not crash",
           focus.same_window({"app": VSCODE}, {"app": VSCODE}), True)
 

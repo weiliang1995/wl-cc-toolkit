@@ -47,15 +47,25 @@ Notifications fire only when you have actually switched away:
 2. At `Stop`, read it again and compare
 3. If they match, you are still watching, so stay quiet
 
-The comparison splits titles on the usual separators (`—` `–` `|` ` - `).
-With three or more segments the first is dropped (it is normally the
-filename) and the rest must match; with two or fewer, the whole title must
-match. So switching files inside VS Code is still the same window, while a
-different project's window is not.
+The comparison splits titles on the usual separators (`—` `–` `|` ` - `) and
+every segment must match. Comparing segment lists rather than raw strings
+keeps the check immune to how the separator is rendered.
+
+The first segment matters most: VS Code puts the focused view's name there,
+which is a file name when you are in the editor and the session's own name
+when you are in a Claude Code panel. So the check also distinguishes the two
+cases that live inside a single OS window -- you clicked into a file, or you
+moved to another Claude session's panel -- and treats both as "you are not
+watching this session".
 
 A longest-common-suffix threshold does not work here: two VS Code windows on
 *different* projects still share ` - Visual Studio Code`, so no threshold is
 safe.
+
+The cost of counting the first segment is that Claude Code sometimes renames
+a session mid-turn, which reads as a view change and can produce one dialog
+you did not need. That trade is deliberate: a panel you did not need costs
+far less than silently losing the plugin's whole point.
 
 ## Self-check
 
