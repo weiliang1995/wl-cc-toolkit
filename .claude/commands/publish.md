@@ -1,13 +1,17 @@
 ---
 name: publish
-description: Publish a plugin - bump version, auto-generate commit message from changelog, commit and push
+description: Publish a plugin - bump version, auto-generate commit message from changelog, commit on a release branch and open a PR
 user-invocable: true
 model-auto-invocable: false
 ---
 
 # Publish Plugin
 
-Bump version, generate changelog-based commit message, commit and push.
+Bump version, generate changelog-based commit message, commit on a release branch and open a PR.
+
+`main` is a protected branch on GitHub — it rejects direct pushes and requires a pull
+request. A release therefore lands as a branch plus a PR, and the version tag is only
+created once that PR is merged.
 
 ## Usage
 ```
@@ -59,12 +63,18 @@ Abort with a clear message if any of these fail:
    git status --porcelain
    ```
    Uncommitted changes *inside* `packages/<name>/` are fine — they are part of this release. Changes elsewhere must be committed or stashed first.
-2. Current branch is `main`:
+2. Note the current branch — it decides where the release commit goes in step 8:
    ```bash
    git rev-parse --abbrev-ref HEAD
    ```
-   If not, ask the user to confirm before continuing.
-3. Local branch is up to date with the remote:
+   - On `main`: step 8 will create `release/<name>-<new-version>` off it. Confirm
+     `main` has no local commits ahead of `origin/main` first (`git log origin/main..HEAD`);
+     if it does, abort — those commits belong on their own branch, not in this release.
+   - On any other branch: the release commit goes on that branch. Say which one, so the
+     user can stop you if they meant to branch from `main` instead.
+
+   Never commit a release directly to `main` — the remote rejects the push.
+3. The base branch is up to date with the remote:
    ```bash
    git fetch origin && git status -sb
    ```
@@ -136,7 +146,8 @@ Print a summary before touching git:
 ```
 Package:  <name>
 Version:  <old> -> <new>
-Tag:      <name>@<new>
+Branch:   <release branch> (new off main | existing)
+Tag:      <name>@<new>  (created after the PR merges, not now)
 Files:    packages/<name>/.claude-plugin/plugin.json
           packages/<name>/CHANGELOG.md
           .claude-plugin/marketplace.json
@@ -146,9 +157,9 @@ Commit message:
   <the message from step 8>
 ```
 
-Ask the user to confirm. Stop and wait — do not commit, tag, or push without an explicit yes.
+Ask the user to confirm. Stop and wait — do not commit or push without an explicit yes.
 
-### 8. Commit, tag, push
+### 8. Commit and push the release branch
 
 Build the commit message from the changelog section:
 
@@ -158,16 +169,50 @@ release(<name>): v<new-version>
 <the bullet lines from the changelog section, without the ### headers>
 ```
 
-Then:
+If step 2 found you on `main`, create the release branch first:
+```bash
+git checkout -b release/<name>-<new-version>
+```
+
+Then commit and push:
 ```bash
 git add packages/<name>/ .claude-plugin/marketplace.json CATALOG.md
 git commit -m "<message>"
-git tag <name>@<new-version>
-git push origin main --follow-tags
+git push -u origin <release-branch>
 ```
 
-Report the pushed tag and commit SHA.
+Do **not** tag yet. A squash or rebase merge rewrites the commit, which would leave the
+tag pointing at a SHA that never reaches `main`.
 
-### 9. Post-publish note
+### 9. Open the pull request
 
-Remind the user: if this package is currently symlinked into local dev mode, run `/plugin-dev <name> remote` to switch back to the published version before verifying the release.
+If `gh` is on PATH:
+```bash
+gh pr create --base main --head <release-branch> --title "release(<name>): v<new-version>" --body "<the changelog section>"
+```
+
+If `gh` is not installed, print the compare URL from the push output for the user to open
+manually, along with the suggested title and body:
+```
+https://github.com/<owner>/<repo>/pull/new/<release-branch>
+```
+
+Report the branch, the commit SHA, and the PR URL.
+
+### 10. After the PR merges
+
+These steps need the merge to have happened, so hand them to the user as a follow-up
+(or run them yourself once they confirm the PR is merged):
+
+```bash
+git checkout main && git pull
+git tag <name>@<new-version>
+git push origin <name>@<new-version>
+```
+
+Tagging here works whether the PR was merged, squashed, or rebased, because the tag
+lands on whatever commit actually became `main`.
+
+Also remind the user: if this package is currently symlinked into local dev mode, run
+`/plugin-dev <name> remote` to switch back to the published version before verifying the
+release.
