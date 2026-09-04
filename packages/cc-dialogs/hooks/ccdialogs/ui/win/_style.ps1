@@ -23,30 +23,12 @@ public class CcDpi {
 '@
 }
 
-# Form.TopMost alone is not enough. Among topmost windows the one raised last
-# wins, so any toast that appears after ours -- a Steam login notice, say --
-# lands on top and covers the very buttons we are waiting on. Re-asserting
-# HWND_TOPMOST puts us back at the front of that band. SWP_NOACTIVATE is what
-# makes it safe to do repeatedly: it reorders the window without touching
-# focus, so it can never steal your keystrokes mid-sentence.
-if (-not ('CcZ' -as [type])) {
-  Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-public class CcZ {
-  static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
-  const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOACTIVATE = 0x0010;
-  [DllImport("user32.dll")]
-  static extern bool SetWindowPos(IntPtr h, IntPtr after,
-                                  int x, int y, int cx, int cy, uint flags);
-  public static void Raise(IntPtr h) {
-    if (h == IntPtr.Zero) return;
-    SetWindowPos(h, HWND_TOPMOST, 0, 0, 0, 0,
-                 SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
-  }
-}
-'@
-}
+# A panel sets Form.TopMost once and leaves it there. An earlier version also
+# re-asserted HWND_TOPMOST on a timer, so that a toast appearing later could
+# not cover the buttons -- but among topmost windows Windows fronts whichever
+# was raised last, so two panels from two sessions ended up taking turns
+# covering each other for as long as both were open. One panel that a toast
+# can cover is worth more than two panels that flicker.
 try { [void][CcDpi]::SetProcessDPIAware() } catch {}
 
 [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -215,21 +197,6 @@ function New-CcToastForm {
   })
 
   Set-CcRoundedCorners -Form $form -Radius $Theme.Radius
-
-  # Script scope, for the same reason Add-CcAutoClose uses it: the handler
-  # runs long after this function has returned.
-  $script:ccTopTimer          = New-Object System.Windows.Forms.Timer
-  $script:ccTopTimer.Interval = 700
-  $script:ccTopTimer.Add_Tick({
-    try { [CcZ]::Raise($script:form.Handle) } catch {}
-  })
-  $form.Add_Shown({
-    try { [CcZ]::Raise($script:form.Handle) } catch {}
-    $script:ccTopTimer.Start()
-  })
-  $form.Add_FormClosed({
-    try { $script:ccTopTimer.Stop(); $script:ccTopTimer.Dispose() } catch {}
-  })
 
   return $form
 }
