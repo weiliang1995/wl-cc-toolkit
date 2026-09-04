@@ -4,7 +4,7 @@
 
 Create a Claude Code skill named `ui-code-inspector` that guides Claude through adding a local-development UI-to-source inspector to frontend projects.
 
-The first phase supports Vite React and Next.js as executable paths. Other JSX-like frameworks can be detected, but the skill must not automatically modify them until a later version defines a verified adapter.
+Vite React is the only executable path. Next.js is a deliberate non-goal — see "Next.js Is Out of Scope". Other JSX-like frameworks can be detected, but the skill must not automatically modify them until a later version defines a verified adapter.
 
 ## User Experience
 
@@ -45,22 +45,18 @@ Recommended strategy:
 - Add a dev-only client runtime through the Vite entry path or plugin HTML transform.
 - Add or reuse an editor-launch endpoint when browser URI opening is not enough.
 
-### Next.js
+## Next.js Is Out of Scope
 
-Claude should detect Next.js through:
+Next.js is detected but never implemented against. Detection exists only so the skill can stop cleanly and explain why.
 
-- `package.json` containing `next`.
-- `next.config.*`.
-- App Router files under `app/` or `src/app/`, or Pages Router files under `pages/` or `src/pages/`.
+Reasons:
 
-Recommended strategy:
+- **Turbopack is the default.** Next.js 16 runs `next dev` and `next build` on Turbopack, which does not execute a webpack loader chain. Loader-based injection would require forcing the whole repository onto `next dev --webpack` and `next build --webpack`, slowing every developer for one dev tool and betting on a bundler path Next.js is moving away from.
+- **Injection depends on Next.js internals.** There is no public API for adding a transform alongside the built-in SWC step; it requires walking `config.module.rules` to find and extend the `next-swc-loader` rule. That is not a stability contract, and breakage surfaces as an unrelated-looking build error.
+- **Production exclusion takes three separate cuts.** The client runtime chain, the compile-time injection chain, and the editor-launch API route each leak independently, and guaranteeing a clean build requires re-verifying after any change to the layout, the API tree, or the webpack config.
+- **App Router limits the payoff.** Server Components do not run browser runtime code, so a meaningful part of a typical App Router tree is not inspectable regardless.
 
-- Prefer a dev-only integration using existing React inspector libraries when compatible.
-- Check whether the project uses App Router, Pages Router, custom `swcPlugins`, Babel config, SWC-only compilation, Turbopack, or custom Next config before choosing an injection path.
-- For Next.js 13+, assume SWC unless evidence shows Babel is active. Adding `.babelrc` makes Next switch to Babel and has a performance cost that needs approval.
-- In App Router projects, disclose that Server Components do not host client-side inspector runtime behavior; the runtime can only operate on Client Components and browser-rendered DOM.
-- Add the runtime through a client-only wrapper in the root app layout or custom app file.
-- Add an API route or dev helper endpoint for editor launch only when needed.
+Recommend the existing Next.js dev overlay, React DevTools, and source maps instead. Anything beyond that is a separate design conversation with its own approval, not an application of this skill.
 
 ## Detection Rules
 
@@ -105,9 +101,9 @@ The skill should ask Claude to support VS Code-compatible editors where practica
 - Only enable in development.
 - Ensure production output does not include inspector attributes or runtime code; rely on dev-only entry points and dead-code elimination, not only runtime no-ops.
 - Do not inject inspector attributes into `node_modules`.
-- Do not overwrite existing Babel, Vite, or Next config style; extend the local pattern.
+- Do not overwrite existing Babel or Vite config style; extend the local pattern.
 - Do not dynamically mutate `data-inspector-*` attributes at runtime because it can interfere with React prop diff and hydration expectations.
-- Do not claim support for Angular, Vue, Nuxt, or unknown frameworks in phase one.
+- Do not claim support for Next.js, Angular, Vue, Nuxt, or unknown frameworks.
 - Do not continue after a failed framework detection.
 
 ## Verification

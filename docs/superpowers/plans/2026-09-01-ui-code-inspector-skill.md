@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a Claude Code skill that guides agents through integrating a dev-only UI-to-source inspector for Vite React and Next.js projects.
+**Goal:** Add a Claude Code skill that guides agents through integrating a dev-only UI-to-source inspector for Vite React projects.
 
 **Architecture:** The repository stores skills as Markdown files under `skills/` with frontmatter. The new skill encodes a structured detect-then-adapt workflow, separating compile-time metadata injection from a framework-neutral DOM runtime and editor launch path.
 
-**Tech Stack:** Claude Code skill Markdown, repository catalog Markdown, Vite React, Next.js, Babel/SWC concepts, DOM event handling, editor launch endpoints.
+**Tech Stack:** Claude Code skill Markdown, repository catalog Markdown, Vite React, Babel/SWC concepts, DOM event handling, editor launch endpoints.
 
 **Spec:** `docs/superpowers/specs/2026-09-01-ui-code-inspector-skill-design.md`
 
 ## Global Constraints
 
 - Skill name is `ui-code-inspector`.
-- Phase one executable targets are Vite React and Next.js.
+- The only executable target is Vite React. Next.js is a deliberate non-goal.
 - Vue, Angular, Nuxt, and unknown frameworks are detection-only or advisory in phase one.
 - The target integration must be dev-only.
 - Production output must not contain inspector attributes or runtime code.
@@ -36,13 +36,13 @@
 ```markdown
 ---
 name: ui-code-inspector
-description: Use when adding or reviewing a local development UI-to-source inspector for Vite React or Next.js projects, where clicking a rendered UI element should open the source file line in the editor.
+description: Use when adding or reviewing a local development UI-to-source inspector for Vite React projects, where clicking a rendered UI element should open the source file line in the editor. Next.js is explicitly out of scope.
 ---
 ```
 
 - [x] **Step 2: Add the required workflow**
 
-Add sections for scope, repo inspection, structured framework detection, architecture, Vite React, Next.js, runtime inspector, editor launch, verification, and stop conditions.
+Add sections for scope, repo inspection, structured framework detection, architecture, Vite React, why Next.js is out of scope, runtime inspector, editor launch, verification, and stop conditions.
 
 - [x] **Step 3: Encode stop conditions**
 

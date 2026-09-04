@@ -12,7 +12,7 @@
     {
       "name": "ui-code-inspector",
       "source": "./packages/ui-code-inspector",
-      "description": "Adds a dev-only click-the-UI-to-open-the-source inspector to Vite React / Next.js projects"
+      "description": "Adds a dev-only click-the-UI-to-open-the-source inspector to Vite React projects"
     }
   ]
 }
