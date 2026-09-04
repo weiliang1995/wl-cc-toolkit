@@ -1,5 +1,5 @@
 {
   "name": "ui-code-inspector",
-  "version": "1.0.0",
-  "description": "Guides adding a dev-only UI-to-source inspector to Vite React or Next.js projects"
+  "version": "2.0.0",
+  "description": "Guides adding a dev-only UI-to-source inspector to Vite React projects"
 }

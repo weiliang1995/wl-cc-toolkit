@@ -1,7 +1,7 @@
 {
   "name": "ui-code-inspector",
-  "version": "1.0.0",
-  "description": "Guides adding a dev-only UI-to-source inspector to Vite React or Next.js projects",
+  "version": "2.0.0",
+  "description": "Guides adding a dev-only UI-to-source inspector to Vite React projects",
   "author": {
     "name": "weiliang1995",
     "email": "wlkuik@gmail.com",
@@ -14,7 +14,6 @@
     "inspector",
     "vite",
     "react",
-    "nextjs",
     "devtools",
     "jsx"
   ],
@@ -23,7 +22,7 @@
   "interface": {
     "displayName": "UI Code Inspector",
     "shortDescription": "Click a rendered UI element to open its source line in your editor",
-    "longDescription": "Adds a dev-only inspector to Vite React or Next.js projects: hold Alt/Option to enter inspect mode, hover to outline an element and see its source label, click to open file:line:column in your editor. Compile-time metadata injection plus a framework-neutral runtime, stripped from production builds.",
+    "longDescription": "Adds a dev-only inspector to Vite React projects: hold Alt/Option to enter inspect mode, hover to outline an element and see its source label, click to open file:line:column in your editor. Compile-time metadata injection plus a framework-neutral runtime, stripped from production builds.",
     "developerName": "weiliang1995",
     "category": "Developer Tools",
     "capabilities": [
