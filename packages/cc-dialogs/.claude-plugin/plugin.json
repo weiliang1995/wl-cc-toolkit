@@ -1,5 +1,5 @@
 {
   "name": "cc-dialogs",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Replace Claude Code TUI with macOS/Windows native dialogs"
 }

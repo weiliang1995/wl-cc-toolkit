@@ -1,50 +1,52 @@
 {
-  "PermissionRequest": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "py -3 \"${CLAUDE_PLUGIN_ROOT}/hooks/permission_dialog.py\" || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/permission_dialog.py\"",
-          "timeout": 600
-        }
-      ]
-    }
-  ],
-  "PreToolUse": [
-    {
-      "matcher": "AskUserQuestion",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "py -3 \"${CLAUDE_PLUGIN_ROOT}/hooks/question_dialog.py\" || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/question_dialog.py\"",
-          "timeout": 600
-        }
-      ]
-    }
-  ],
-  "UserPromptSubmit": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "py -3 \"${CLAUDE_PLUGIN_ROOT}/hooks/focus_baseline.py\" || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/focus_baseline.py\"",
-          "timeout": 600
-        }
-      ]
-    }
-  ],
-  "Stop": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "py -3 \"${CLAUDE_PLUGIN_ROOT}/hooks/idle_notify.py\" || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/idle_notify.py\"",
-          "timeout": 600
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \"${CLAUDE_PLUGIN_ROOT}/hooks/permission_dialog.py\" || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/permission_dialog.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \"${CLAUDE_PLUGIN_ROOT}/hooks/question_dialog.py\" || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/question_dialog.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \"${CLAUDE_PLUGIN_ROOT}/hooks/focus_baseline.py\" || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/focus_baseline.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \"${CLAUDE_PLUGIN_ROOT}/hooks/idle_notify.py\" || python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/idle_notify.py\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
 }
