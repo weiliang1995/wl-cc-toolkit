@@ -170,7 +170,7 @@ reproduced silent-corruption bug, not a style preference.
 
    ```bash
    cd "<resolved TARGET path>"
-   SCAFFOLD_TMP="$(pwd)/.wl-harness-scaffold"
+   SCAFFOLD_TMP="$(pwd)/wl-harness-scaffold"
    rm -rf "$SCAFFOLD_TMP" && mkdir -p "$SCAFFOLD_TMP"
    pnpm create next-app@latest "$SCAFFOLD_TMP" --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
    pnpm --dir "$SCAFFOLD_TMP" add antd less
@@ -180,15 +180,32 @@ reproduced silent-corruption bug, not a style preference.
    done
    shopt -u dotglob nullglob
    rm -rf "$SCAFFOLD_TMP"
+   node -e "const fs = require('fs'); const p = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); p.name = process.argv[2]; fs.writeFileSync(process.argv[1], JSON.stringify(p, null, 2) + '\n');" package.json "<slug>"
    ```
 
+   `create-next-app` derives the project name from the scaffold path's
+   basename and runs it through `validate-npm-package-name` before doing any
+   work, which rejects a name starting with `.` — so `$SCAFFOLD_TMP` must not
+   start with a dot; hence `wl-harness-scaffold`, not `.wl-harness-scaffold`.
    `$SCAFFOLD_TMP` is empty before the generator runs, so the whitelist check
-   always passes there. `create-next-app` detects that `$SCAFFOLD_TMP` sits
-   inside an existing git repository (the `.git` from Task 5's `git init`,
-   or whatever the author already had) and skips its own `git init`, so
-   there is no `.git`-vs-`.git` collision when the contents move up. Nothing
-   in the generated output is named `.claude` or `docs`, so the move cannot
-   clobber either.
+   on `<resolved TARGET path>` never comes into play — `create-next-app` only
+   ever sees the empty scaffold directory. `create-next-app` detects that
+   `$SCAFFOLD_TMP` sits inside an existing git repository (the `.git` from
+   Task 5's `git init`, or whatever the author already had) and skips its own
+   `git init`, so there is no `.git`-vs-`.git` collision when the contents
+   move up. Nothing in the generated output is named `.claude` or `docs`, so
+   the move cannot clobber either.
+
+   Because `create-next-app` scaffolded into `$SCAFFOLD_TMP` instead of `.`,
+   the `name` field it wrote into `package.json` is `wl-harness-scaffold` —
+   the temp directory's basename, not the project's slug — and
+   `create-next-app` has no flag to override it. The `node -e` command above
+   runs after the move, with `<resolved TARGET path>` already the working
+   directory, and rewrites `package.json`'s `name` to `<slug>` in place. It
+   passes `package.json` as a plain relative path rather than interpolating
+   an absolute Windows path into the `-e` string, so there is nothing for
+   JS-string escaping to corrupt — the same hazard flagged above for
+   `TARGET`.
 
    Then set `"strict": true` in `tsconfig.json` if the generator did not, create
    the directory layout above, and build each route from `docs/plan.md`. Every

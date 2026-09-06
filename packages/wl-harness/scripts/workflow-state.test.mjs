@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -99,6 +99,28 @@ test('writeWorkflowState defaults to an empty body when creating a new file', ()
     writeWorkflowState(dir, { slug: 'personal-site', stage: 'intake' });
     const state = readWorkflowState(dir);
     assert.equal(state.body, '');
+  });
+});
+
+test('writeWorkflowState recovers from a zero-byte state file', () => {
+  withTempProject((dir) => {
+    mkdirSync(path.join(dir, '.claude'), { recursive: true });
+    writeFileSync(workflowStatePath(dir), '', 'utf8');
+    writeWorkflowState(dir, { slug: 'personal-site', stage: 'plan' });
+    const state = readWorkflowState(dir);
+    assert.equal(state.slug, 'personal-site');
+    assert.equal(state.stage, 'plan');
+  });
+});
+
+test('writeWorkflowState recovers from a state file missing its frontmatter delimiter', () => {
+  withTempProject((dir) => {
+    mkdirSync(path.join(dir, '.claude'), { recursive: true });
+    writeFileSync(workflowStatePath(dir), 'garbage, not frontmatter at all\nmore garbage\n', 'utf8');
+    writeWorkflowState(dir, { slug: 'personal-site', stage: 'plan' });
+    const state = readWorkflowState(dir);
+    assert.equal(state.slug, 'personal-site');
+    assert.equal(state.stage, 'plan');
   });
 });
 

@@ -71,8 +71,16 @@ export function writeWorkflowState(projectDir, { slug, stage, body }) {
   // of defaulting to empty. A brand-new file still starts with an empty body.
   let resolvedBody = body;
   if (resolvedBody === undefined) {
-    const existing = readWorkflowState(projectDir);
-    resolvedBody = existing ? existing.body : '';
+    // A crashed or partial previous run can leave a zero-byte or otherwise
+    // unparseable state file. Recovering from that (the entire point of this
+    // module) matters more than preserving a body that cannot be read, so a
+    // parse failure here falls back to an empty body instead of propagating.
+    try {
+      const existing = readWorkflowState(projectDir);
+      resolvedBody = existing ? existing.body : '';
+    } catch {
+      resolvedBody = '';
+    }
   }
   mkdirSync(path.join(projectDir, '.claude'), { recursive: true });
   writeFileSync(
