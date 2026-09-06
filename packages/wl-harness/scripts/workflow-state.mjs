@@ -61,9 +61,23 @@ export function readWorkflowState(projectDir) {
   return parseFrontmatter(readFileSync(filePath, 'utf8'));
 }
 
-export function writeWorkflowState(projectDir, { slug, stage, body = '' }) {
+export function writeWorkflowState(projectDir, { slug, stage, body }) {
   if (!slug) throw new Error('writeWorkflowState requires a slug');
   if (!stage) throw new Error('writeWorkflowState requires a stage');
+  // The only caller (init-project's per-step stage recorder) never passes a
+  // body — it just wants to advance the stage. Blanking the body on every
+  // one of the seven stage transitions would destroy anything a step wrote
+  // there, so when body is omitted, carry the existing body forward instead
+  // of defaulting to empty. A brand-new file still starts with an empty body.
+  let resolvedBody = body;
+  if (resolvedBody === undefined) {
+    const existing = readWorkflowState(projectDir);
+    resolvedBody = existing ? existing.body : '';
+  }
   mkdirSync(path.join(projectDir, '.claude'), { recursive: true });
-  writeFileSync(workflowStatePath(projectDir), stringifyFrontmatter({ slug, stage }, body), 'utf8');
+  writeFileSync(
+    workflowStatePath(projectDir),
+    stringifyFrontmatter({ slug, stage }, resolvedBody),
+    'utf8',
+  );
 }

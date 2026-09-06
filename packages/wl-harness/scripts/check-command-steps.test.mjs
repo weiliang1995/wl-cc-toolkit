@@ -23,6 +23,26 @@ function numberedBodyLines(raw) {
   return body.match(/^\d+\.\s/gm) ?? [];
 }
 
+// Extract the bolded stage name that opens each numbered body line, e.g.
+// "1. **Intake** — Derive the slug..." -> "Intake". Falls back to the raw
+// line when a numbered line is not bolded, so a missing bold still shows up
+// as a mismatch rather than silently vanishing from the comparison.
+function numberedBodyStageNames(raw) {
+  const body = raw.split(/^---$/m).slice(2).join('---');
+  const lines = body.match(/^\d+\.\s+.*/gm) ?? [];
+  return lines.map((line) => {
+    const match = line.match(/^\d+\.\s+\*\*(.+?)\*\*/);
+    return match ? match[1] : line;
+  });
+}
+
+// A space and a hyphen are the same separator for this purpose
+// ("context-load" in frontmatter vs "Context load" in prose), so normalize
+// both before comparing, case-insensitively.
+function normalizeStageName(name) {
+  return name.trim().toLowerCase().replace(/[\s-]+/g, '-');
+}
+
 const commandFiles = readdirSync(commandsDir).filter((f) => f.endsWith('.md'));
 
 test('there is at least one command to check', () => {
@@ -39,6 +59,17 @@ for (const file of commandFiles) {
       steps.length,
       numbered.length,
       `frontmatter declares ${steps.length} steps but the body has ${numbered.length} numbered lines`,
+    );
+  });
+
+  test(`${file}: frontmatter steps match the body's stage names, in order`, () => {
+    const raw = readFileSync(path.join(commandsDir, file), 'utf8');
+    const steps = frontmatterSteps(raw);
+    const stageNames = numberedBodyStageNames(raw);
+    assert.deepEqual(
+      stageNames.map(normalizeStageName),
+      steps.map(normalizeStageName),
+      `frontmatter steps [${steps.join(', ')}] do not match body stage names [${stageNames.join(', ')}] in order`,
     );
   });
 }

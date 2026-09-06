@@ -658,7 +658,7 @@ Create `packages/wl-harness/commands/init-project.md`:
 ---
 id: init-project-s0
 type: init-project
-description: Scaffold a new complexity-S, frontend-only Next.js project through all eight harness stages
+description: Scaffold a new complexity-S, frontend-only Next.js project through all stages up to Handoff
 allowed-tools: Bash, Read, Write, Edit, Glob
 steps:
   - intake
@@ -715,21 +715,84 @@ public/
 
 ## Implementation
 
-Let `HARNESS` be `${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.mjs` and `TARGET`
-be the absolute path of the directory being initialised (the current working
-directory unless the author names another).
+Resolve `HARNESS`, the absolute path to `workflow-state.mjs`, before doing
+anything else. `CLAUDE_PLUGIN_ROOT` is set reliably when Claude Code dispatches
+a hook, but it is not guaranteed to reach the shell environment of a Bash call
+made from inside a slash command's own instructions — treat it as a hint, not
+a given:
+
+```bash
+HARNESS=""
+if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/scripts/workflow-state.mjs" ]; then
+  HARNESS="$CLAUDE_PLUGIN_ROOT/scripts/workflow-state.mjs"
+else
+  HARNESS=$(find -L ~/.claude/plugins -name workflow-state.mjs -path "*wl-harness*" -print -quit 2>/dev/null)
+fi
+if [ -z "$HARNESS" ] || [ ! -f "$HARNESS" ]; then
+  echo "ERROR: could not locate wl-harness/scripts/workflow-state.mjs (checked \$CLAUDE_PLUGIN_ROOT and ~/.claude/plugins)"
+  exit 1
+fi
+HARNESS_URL=$(node -e "console.log(require('url').pathToFileURL(require('fs').realpathSync(process.argv[1])).href)" "$HARNESS")
+echo "resolved HARNESS url: $HARNESS_URL"
+```
+
+`HARNESS` must be resolved to a `file://` URL, not left as a native path. A
+native Windows path (`D:\...`) concatenated after `file://` is not a valid URL
+and `import()` rejects it with `ERR_INVALID_URL`; `pathToFileURL` is what
+correctly escapes and formats it on every platform, including the `/c/...`
+MSYS-style paths `find` can produce on Windows.
+
+The real Claude Code plugin layout nests a marketplace and version segment
+between `plugins` and the plugin's own files (for example
+`~/.claude/plugins/cache/<marketplace>/wl-harness/<version>/scripts/workflow-state.mjs`),
+so the fallback search matches by filename and filters on `wl-harness`
+appearing anywhere in the path, rather than assuming `scripts/` is a direct
+child of a directory literally named `wl-harness`. `-L` makes `find` follow a
+symlinked plugin directory, which is how local-checkout dev mode is wired in.
+If more than one match exists, take the first and trust the echoed path —
+that echo is the record of which one was used. Stop with the printed error if
+no file is found; do not guess a path and continue.
+
+Let `TARGET` be the absolute path of the directory being initialised (the
+current working directory unless the author names another).
+
+**Both resolutions above happen exactly once, in this preamble, before step 1
+runs.** Each numbered step below is a separately-invoked Bash call, and shell
+state — including `$HARNESS_URL` and `$TARGET` — does not persist between
+separate Bash tool calls; only the working directory does. So `$HARNESS_URL`
+and `$TARGET` used in this preamble are placeholders for exposition only: once
+resolved and echoed here, carry the two absolute values forward as literal
+text substituted into every later command in this run, not as live shell
+variables. The remaining examples in this file write `<resolved HARNESS
+url>` and `<resolved TARGET path>` to mark exactly where that substitution
+happens.
 
 Record the stage at the *start* of each numbered step, using:
 
 ```bash
-node -e "import('file://$HARNESS').then(m => m.writeWorkflowState('$TARGET', { slug: '<slug>', stage: '<stage>' }))"
+node -e "import('<resolved HARNESS url>').then(m => m.writeWorkflowState(process.argv[1], { slug: '<slug>', stage: '<stage>' }))" "<resolved TARGET path>"
 ```
 
+**`TARGET` MUST be passed as a Node `argv` value (read back via
+`process.argv[1]`), never interpolated directly into the `-e` JS string.** A
+Windows `TARGET` contains backslashes (`C:\Users\...`); inside a JS string
+those are consumed as escape sequences with no error, silently corrupting the
+path (e.g. `\U` and `\t` vanish or turn into a tab) so the state file lands
+somewhere unintended and the run looks like it succeeded. Passing it as
+`argv` sidesteps JS string-escape processing entirely. Do not "simplify" this
+back to string interpolation in a future edit — it is the fix for a
+reproduced silent-corruption bug, not a style preference.
+
 1. **Intake** — Derive the slug from the description with `slugify` (for example
-   `my personal website` becomes `my-personal-site`). Confirm `TARGET` is empty
-   or contains only `.git`; if it holds other files, stop and tell the author
-   this command is for empty repositories. Write the state file with stage
-   `intake`.
+   `my personal website` becomes `my-personal-website`). `slugify` strips
+   everything outside `[a-z0-9]` with no transliteration step, so a
+   non-ASCII description (for example one written in Chinese) can collapse to
+   an empty string. If the derived slug is empty, stop and ask the author for
+   an explicit ASCII slug instead of proceeding — do not call
+   `writeWorkflowState` with an empty slug. Confirm `<resolved
+   TARGET path>` is empty or contains only `.git`; if it holds other files,
+   stop and tell the author this command is for empty repositories. Write the
+   state file with stage `intake`.
 
 2. **Context load** — Record stage `context-load`. State back to the author, in
    one short block: the fixed stack above, the directory layout above, and the
@@ -739,25 +802,50 @@ node -e "import('file://$HARNESS').then(m => m.writeWorkflowState('$TARGET', { s
 3. **Design** — Record stage `design`. Selection is already fixed by the stack
    block, so the only real decision here is structure. Ask the author for the
    page list if the description does not imply one, then write
-   `docs/spec.md` in `TARGET` containing: the project's purpose in one
+   `docs/spec.md` in `<resolved TARGET path>` containing: the project's purpose in one
    sentence, the list of routes with one line each, and the acceptance criteria
    ("`pnpm exec tsc --noEmit` passes", "every route renders", plus anything the
    author named). Keep it to intent and acceptance — no implementation detail.
 
-4. **Plan** — Record stage `plan`. Write `docs/plan.md` in `TARGET` listing the
+4. **Plan** — Record stage `plan`. Write `docs/plan.md` in `<resolved TARGET path>` listing the
    scaffold steps in order, each with the files it produces. For a typical
    personal site that is: create the Next.js app, add Less and Ant Design,
    create the `src/components/ui/` wrappers the routes need, then one step per
    route.
 
 5. **Implement** — Record stage `implement`. Work through `docs/plan.md` in
-   order:
+   order.
+
+   `create-next-app` refuses to scaffold into a non-empty directory unless
+   every existing entry is on its own whitelist (things like `.git`,
+   `.gitignore`, `docs`) — and `.claude/`, written in step 1, is not on that
+   whitelist. By this step `<resolved TARGET path>` already holds `.claude/`
+   (and `docs/spec.md`, `docs/plan.md` from steps 3-4), so scaffolding
+   *directly* into `<resolved TARGET path>` aborts. Scaffold into a fresh,
+   empty subdirectory instead, then move its contents up — including
+   dotfiles, which a bare `mv tmp/* .` silently skips:
 
    ```bash
-   cd "$TARGET"
-   pnpm create next-app@latest . --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
-   pnpm add antd less
+   cd "<resolved TARGET path>"
+   SCAFFOLD_TMP="$(pwd)/.wl-harness-scaffold"
+   rm -rf "$SCAFFOLD_TMP" && mkdir -p "$SCAFFOLD_TMP"
+   pnpm create next-app@latest "$SCAFFOLD_TMP" --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
+   pnpm --dir "$SCAFFOLD_TMP" add antd less
+   shopt -s dotglob nullglob
+   for f in "$SCAFFOLD_TMP"/*; do
+     mv "$f" "./$(basename "$f")"
+   done
+   shopt -u dotglob nullglob
+   rm -rf "$SCAFFOLD_TMP"
    ```
+
+   `$SCAFFOLD_TMP` is empty before the generator runs, so the whitelist check
+   always passes there. `create-next-app` detects that `$SCAFFOLD_TMP` sits
+   inside an existing git repository (the `.git` from Task 5's `git init`,
+   or whatever the author already had) and skips its own `git init`, so
+   there is no `.git`-vs-`.git` collision when the contents move up. Nothing
+   in the generated output is named `.claude` or `docs`, so the move cannot
+   clobber either.
 
    Then set `"strict": true` in `tsconfig.json` if the generator did not, create
    the directory layout above, and build each route from `docs/plan.md`. Every
@@ -768,7 +856,7 @@ node -e "import('file://$HARNESS').then(m => m.writeWorkflowState('$TARGET', { s
    `docs/spec.md`:
 
    ```bash
-   cd "$TARGET" && pnpm exec tsc --noEmit
+   cd "<resolved TARGET path>" && pnpm exec tsc --noEmit
    ```
 
    Report a pass/fail summary. On failure, fix and re-run — this loop is
@@ -889,7 +977,7 @@ While the run proceeds, and again at the end:
 cat ~/projects/personal-site/.claude/workflow-state.md
 ```
 
-Expected: frontmatter with `slug: my-personal-site` and a `stage` that ends at
+Expected: frontmatter with `slug: my-personal-website` and a `stage` that ends at
 `handoff`. Record any stage that was skipped or written out of order.
 
 - [ ] **Step 5: Check the acceptance criterion actually ran**

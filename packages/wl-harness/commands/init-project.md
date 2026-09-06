@@ -1,7 +1,7 @@
 ---
 id: init-project-s0
 type: init-project
-description: Scaffold a new complexity-S, frontend-only Next.js project through all eight harness stages
+description: Scaffold a new complexity-S, frontend-only Next.js project through all stages up to Handoff
 allowed-tools: Bash, Read, Write, Edit, Glob
 steps:
   - intake
@@ -75,9 +75,15 @@ if [ -z "$HARNESS" ] || [ ! -f "$HARNESS" ]; then
   echo "ERROR: could not locate wl-harness/scripts/workflow-state.mjs (checked \$CLAUDE_PLUGIN_ROOT and ~/.claude/plugins)"
   exit 1
 fi
-HARNESS=$(node -e "console.log(require('fs').realpathSync(process.argv[1]))" "$HARNESS")
-echo "Resolved HARNESS: $HARNESS"
+HARNESS_URL=$(node -e "console.log(require('url').pathToFileURL(require('fs').realpathSync(process.argv[1])).href)" "$HARNESS")
+echo "resolved HARNESS url: $HARNESS_URL"
 ```
+
+`HARNESS` must be resolved to a `file://` URL, not left as a native path. A
+native Windows path (`D:\...`) concatenated after `file://` is not a valid URL
+and `import()` rejects it with `ERR_INVALID_URL`; `pathToFileURL` is what
+correctly escapes and formats it on every platform, including the `/c/...`
+MSYS-style paths `find` can produce on Windows.
 
 The real Claude Code plugin layout nests a marketplace and version segment
 between `plugins` and the plugin's own files (for example
@@ -95,23 +101,38 @@ current working directory unless the author names another).
 
 **Both resolutions above happen exactly once, in this preamble, before step 1
 runs.** Each numbered step below is a separately-invoked Bash call, and shell
-state — including `$HARNESS` and `$TARGET` — does not persist between
-separate Bash tool calls; only the working directory does. So `$HARNESS` and
-`$TARGET` used in this preamble are placeholders for exposition only: once
-resolved and echoed here, carry the two absolute paths forward as literal
+state — including `$HARNESS_URL` and `$TARGET` — does not persist between
+separate Bash tool calls; only the working directory does. So `$HARNESS_URL`
+and `$TARGET` used in this preamble are placeholders for exposition only: once
+resolved and echoed here, carry the two absolute values forward as literal
 text substituted into every later command in this run, not as live shell
 variables. The remaining examples in this file write `<resolved HARNESS
-path>` and `<resolved TARGET path>` to mark exactly where that substitution
+url>` and `<resolved TARGET path>` to mark exactly where that substitution
 happens.
 
 Record the stage at the *start* of each numbered step, using:
 
 ```bash
-node -e "import('file://<resolved HARNESS path>').then(m => m.writeWorkflowState('<resolved TARGET path>', { slug: '<slug>', stage: '<stage>' }))"
+node -e "import('<resolved HARNESS url>').then(m => m.writeWorkflowState(process.argv[1], { slug: '<slug>', stage: '<stage>' }))" "<resolved TARGET path>"
 ```
 
+**`TARGET` MUST be passed as a Node `argv` value (read back via
+`process.argv[1]`), never interpolated directly into the `-e` JS string.** A
+Windows `TARGET` contains backslashes (`C:\Users\...`); inside a JS string
+those are consumed as escape sequences with no error, silently corrupting the
+path (e.g. `\U` and `\t` vanish or turn into a tab) so the state file lands
+somewhere unintended and the run looks like it succeeded. Passing it as
+`argv` sidesteps JS string-escape processing entirely. Do not "simplify" this
+back to string interpolation in a future edit — it is the fix for a
+reproduced silent-corruption bug, not a style preference.
+
 1. **Intake** — Derive the slug from the description with `slugify` (for example
-   `my personal website` becomes `my-personal-site`). Confirm `<resolved
+   `my personal website` becomes `my-personal-website`). `slugify` strips
+   everything outside `[a-z0-9]` with no transliteration step, so a
+   non-ASCII description (for example one written in Chinese) can collapse to
+   an empty string. If the derived slug is empty, stop and ask the author for
+   an explicit ASCII slug instead of proceeding — do not call
+   `writeWorkflowState` with an empty slug. Confirm `<resolved
    TARGET path>` is empty or contains only `.git`; if it holds other files,
    stop and tell the author this command is for empty repositories. Write the
    state file with stage `intake`.
@@ -136,13 +157,38 @@ node -e "import('file://<resolved HARNESS path>').then(m => m.writeWorkflowState
    route.
 
 5. **Implement** — Record stage `implement`. Work through `docs/plan.md` in
-   order:
+   order.
+
+   `create-next-app` refuses to scaffold into a non-empty directory unless
+   every existing entry is on its own whitelist (things like `.git`,
+   `.gitignore`, `docs`) — and `.claude/`, written in step 1, is not on that
+   whitelist. By this step `<resolved TARGET path>` already holds `.claude/`
+   (and `docs/spec.md`, `docs/plan.md` from steps 3-4), so scaffolding
+   *directly* into `<resolved TARGET path>` aborts. Scaffold into a fresh,
+   empty subdirectory instead, then move its contents up — including
+   dotfiles, which a bare `mv tmp/* .` silently skips:
 
    ```bash
    cd "<resolved TARGET path>"
-   pnpm create next-app@latest . --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
-   pnpm add antd less
+   SCAFFOLD_TMP="$(pwd)/.wl-harness-scaffold"
+   rm -rf "$SCAFFOLD_TMP" && mkdir -p "$SCAFFOLD_TMP"
+   pnpm create next-app@latest "$SCAFFOLD_TMP" --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
+   pnpm --dir "$SCAFFOLD_TMP" add antd less
+   shopt -s dotglob nullglob
+   for f in "$SCAFFOLD_TMP"/*; do
+     mv "$f" "./$(basename "$f")"
+   done
+   shopt -u dotglob nullglob
+   rm -rf "$SCAFFOLD_TMP"
    ```
+
+   `$SCAFFOLD_TMP` is empty before the generator runs, so the whitelist check
+   always passes there. `create-next-app` detects that `$SCAFFOLD_TMP` sits
+   inside an existing git repository (the `.git` from Task 5's `git init`,
+   or whatever the author already had) and skips its own `git init`, so
+   there is no `.git`-vs-`.git` collision when the contents move up. Nothing
+   in the generated output is named `.claude` or `docs`, so the move cannot
+   clobber either.
 
    Then set `"strict": true` in `tsconfig.json` if the generator did not, create
    the directory layout above, and build each route from `docs/plan.md`. Every

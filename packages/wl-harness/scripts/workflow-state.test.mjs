@@ -75,6 +75,33 @@ test('slugify lowercases, trims and hyphenates', () => {
   assert.equal(slugify('  My Personal Site!! '), 'my-personal-site');
 });
 
+test('slugify returns an empty string for non-ASCII input (pinned, not fixed)', () => {
+  // slugify only strips to [a-z0-9]; a fully non-ASCII description collapses
+  // to nothing. There is no transliteration dependency here (zero external
+  // deps is a hard constraint), so init-project's step 1 must detect this
+  // empty result itself and ask the author for an ASCII slug rather than
+  // calling writeWorkflowState with one.
+  assert.equal(slugify('我的个人网站'), '');
+});
+
+test('writeWorkflowState preserves the existing body when body is omitted on update', () => {
+  withTempProject((dir) => {
+    writeWorkflowState(dir, { slug: 'personal-site', stage: 'intake', body: '# notes\n' });
+    writeWorkflowState(dir, { slug: 'personal-site', stage: 'plan' });
+    const state = readWorkflowState(dir);
+    assert.equal(state.stage, 'plan');
+    assert.equal(state.body, '# notes\n');
+  });
+});
+
+test('writeWorkflowState defaults to an empty body when creating a new file', () => {
+  withTempProject((dir) => {
+    writeWorkflowState(dir, { slug: 'personal-site', stage: 'intake' });
+    const state = readWorkflowState(dir);
+    assert.equal(state.body, '');
+  });
+});
+
 test('STAGES lists the eight spine stages in order', () => {
   assert.deepEqual(STAGES, [
     'intake',
