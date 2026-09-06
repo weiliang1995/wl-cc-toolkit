@@ -7,6 +7,14 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const commandsDir = path.join(here, '..', 'commands');
 
+// core.autocrlf is true in this repo, so any checkout on Windows — a fresh clone,
+// a branch switch, a merge — materialises these files with CRLF, while git still
+// reports them unchanged. The patterns below anchor on \n, so normalise on read:
+// without this the only mechanical gate S0 ships fails on every Windows clone.
+function readCommand(file) {
+  return readFileSync(path.join(commandsDir, file), 'utf8').replace(/\r\n/g, '\n');
+}
+
 // Spec section 5: the frontmatter `steps` array must match the body's ^N.
 // lines one-for-one. That alignment is what makes a run resumable.
 function frontmatterSteps(raw) {
@@ -51,7 +59,7 @@ test('there is at least one command to check', () => {
 
 for (const file of commandFiles) {
   test(`${file}: frontmatter steps align 1:1 with the numbered body lines`, () => {
-    const raw = readFileSync(path.join(commandsDir, file), 'utf8');
+    const raw = readCommand(file);
     const steps = frontmatterSteps(raw);
     const numbered = numberedBodyLines(raw);
     assert.ok(steps.length > 0, 'no steps found in frontmatter');
@@ -63,7 +71,7 @@ for (const file of commandFiles) {
   });
 
   test(`${file}: frontmatter steps match the body's stage names, in order`, () => {
-    const raw = readFileSync(path.join(commandsDir, file), 'utf8');
+    const raw = readCommand(file);
     const steps = frontmatterSteps(raw);
     const stageNames = numberedBodyStageNames(raw);
     assert.deepEqual(
