@@ -159,18 +159,38 @@ reproduced silent-corruption bug, not a style preference.
    it holds other files, stop and tell the author this command is for empty
    repositories. Write the state file with stage `intake`.
 
-2. **Context load** — Record stage `context-load`. State back to the author, in
-   one short block: the fixed stack above, the directory layout above, and the
-   one red line (no `antd` outside `src/components/ui/`). This is the injection
-   step — the agent that writes code in step 5 must have seen it.
+2. **Context load** — Record stage `context-load`. Read
+   `${CLAUDE_PLUGIN_ROOT}/references/design-template.md` (resolve it the same way
+   as the harness script above — same plugin root, so if `$CLAUDE_PLUGIN_ROOT`
+   was unset, reuse the directory you already located). Then state back to the
+   author, in one short block: the fixed stack above, the directory layout above,
+   and the one red line. This is the injection step — the agent that writes code
+   in step 5 must have seen it.
 
-3. **Design** — Record stage `design`. Selection is already fixed by the stack
-   block, so the only real decision here is structure. Ask the author for the
-   page list if the description does not imply one, then write
-   `docs/spec.md` in `<resolved TARGET path>` containing: the project's purpose in one
-   sentence, the list of routes with one line each, and the acceptance criteria
-   ("`pnpm exec tsc --noEmit` passes", "every route renders", plus anything the
-   author named). Keep it to intent and acceptance — no implementation detail.
+3. **Design** — Record stage `design`. Selection is fixed by the stack block, so
+   what remains is structure, content and acceptance.
+
+   Draft `docs/spec.md` in `<resolved TARGET path>` with the project's purpose in
+   one sentence, the routes or views with one line each, the constraints, and the
+   acceptance criteria. Keep it to intent and acceptance — no implementation
+   detail. Cover every dimension in the template's `frontend` and `Every kind`
+   sections.
+
+   **Then stop, and put your decisions to the author before writing anything
+   else.** Present them as one batch. For each: what you chose, the alternatives
+   you passed over, and why you leaned the way you did. A dimension you picked
+   between candidates is a decision and must appear; a dimension fixed by the
+   stack block, or stated outright by the author, is written as fact and left out
+   of the batch.
+
+   Rewrite `docs/spec.md` from the answers. Record any dimension the author skips
+   as an explicit default in the spec rather than omitting it.
+
+   **Do not enter step 4 until the author has answered.** Creating a spec
+   establishes every constraint this project will be held to, and the agent does
+   not get to settle those alone. Handing over the file to read is not a
+   substitute: a flat spec states decisions as though they were facts, so a reader
+   skims past a fork without seeing that it was one.
 
 4. **Plan** — Record stage `plan`. Write `docs/plan.md` in `<resolved TARGET path>` listing the
    scaffold steps in order, each with the files it produces. For a typical
