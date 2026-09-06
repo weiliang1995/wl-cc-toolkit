@@ -195,6 +195,21 @@ Fixed regardless of complexity: TypeScript strict, react-hook-form + zod (one sc
 form validation and types), dayjs, a single axios instance with interceptors,
 ESLint + Prettier, pnpm.
 
+**These are defaults, not rules, and the State row in particular is a guess.** The real
+determinant of a state-management choice is the project's data flow — which data has its
+truth on the server and can change while the user does nothing, versus which the client
+owns outright. Once server state moves to a query cache, the globally-shared client state
+that remains is usually small enough that no store is warranted, so an M-tier project may
+well not need zustand; conversely an S-tier project that reads from an API needs a query
+cache the S column does not list. A site whose content is local MDX needs neither.
+
+So the complexity tier supplies the default and the Design stage's data-flow answers may
+overturn it in either direction — with the reason recorded in the spec, the same
+tighten-with-a-reason discipline the overlay follows in §7. What must never happen is
+server state being kept in a client store, hand-rolling the invalidation, refetching and
+background updates a query cache already provides. The data-flow questions that settle
+this are part of the Design template described in §16 (D-8).
+
 ### 6.3 Preferred routes, in order
 
 1. **Next.js fullstack** — one profile, native to Vercel
@@ -611,6 +626,74 @@ an oversight**; reopening one early costs more than it saves.
 | **D-5** | L5: the acceptance assertion vocabulary; how a failed assertion is reported and retried; what the timing summary contains | S0 running, refined in S3 |
 | **D-6** | L6: the full red-line list per profile; hook failure ergonomics (retries before handing back to the author); stale snapshot detection detail | S3 |
 | **D-7** | L4: the skill dedup state file format; what qualifies as long-term memory versus per-task state; behaviour immediately after context compaction | S1, once the state machine is real |
+| **D-8** | The Design stage's intake: the template's exact contents per `kind` × complexity, and how a supplied document is merged with it | S0 running. Task 5 measures how much the conversational form actually costs — how many exchanges stage 3 takes, whether any question is asked twice, and whether anything important went unasked. The shape below is settled; only the contents wait |
+
+### The Design stage: how a spec gets written
+
+Stage 3 has to close the information gap between the author and the agent before Plan
+consumes anything. The decisions about *how* are settled now, because they concern the
+spine and the spine is the root. Only the template's contents are deferred (D-8).
+
+**Every path passes through it.** An agent that has to guess fills the gap with plausible
+invention — confident, voluminous, stylistically consistent, and discovered to be wrong
+much later. Ambiguity costs more against an agent than against a person, while
+implementation has become cheap, so the weight belongs upstream: heavy Design and Plan,
+light Implement.
+
+**It is an execution style within stage 3, not a stage of its own** — the same ruling
+test-first gets below, for the same reason. Nothing about the spine changes.
+
+**Its output is a file, not a conversation.** Dialogue lives in a context window and does
+not survive compaction, which is what makes a purely conversational intake re-ask
+questions it already asked — and inconsistent answers to a repeated question then cost
+more explanation. The spec on disk is the state.
+
+**It asks in batches, with a recommendation per question.** One question at a time hides
+the shape of what is being decided and forces the author to commit serially, so a later
+question that should revise an earlier answer can only be handled by retracting it. A
+batch, each item carrying the agent's recommended answer, turns most of the work into
+confirmation rather than composition.
+
+**A template drives it.** Free association asks whatever occurs to the agent; a template
+guarantees the known-important dimensions are reached. It is organised by profile `kind`
+and marked by complexity tier, and it lives in `references/` rather than in a profile,
+because "a view needs loading, empty and error states" is domain knowledge true of every
+frontend stack — putting it in profiles would make every new stack recopy it, breaking §7.
+One file with tier annotations, not one file per combination: nine near-duplicates drift.
+
+**Questions are graded must-answer or skippable, and a skip is recorded.** An exhaustive
+template produces fatigue and then rubber-stamping, which is worse than not asking because
+it manufactures the appearance of alignment. "Pagination: not specified, defaulting to 10
+per page" in the spec and nobody having thought about pagination are very different
+states; the first can be audited later.
+
+**Detail belongs in what correct means, not in how to achieve it.** "The list shows this
+text and this call to action when empty" is worth specifying precisely; "use `<Empty>`,
+centred, 48px margin" expires the moment implementation starts and then either drags the
+spec into a rewrite or gets silently ignored — both of which cost the spec its authority.
+Business logic, behaviour and interaction get pinned down until they are unambiguous and
+self-consistent. Component and CSS choices stay out.
+
+**Not everything can be settled in advance, and the template must not pretend otherwise.**
+Behaviour, acceptance, permissions and error handling are knowable before writing code.
+Contract field shapes and assertion vocabularies are not — those come from a thin slice
+that actually runs, which is what ADR-0002 and D-2 are about. Design-heavy applies to the
+first kind only.
+
+**When the author supplies a document, it is read as raw material rather than accepted as
+the spec.** A hand-written brief almost never states acceptance criteria — people do not
+naturally write down what "done" means — and that is the one thing stage 6 needs. So the
+supplied document answers what it answers, and the batch covers the remainder.
+
+The frontend template's known-important dimensions, from the states most often omitted to
+the data-flow questions that decide §6.2's State row: the four view states (loading, empty,
+error, populated) with empty's four causes distinguished (first use, user-cleared,
+no-results, error); form behaviour across validation timing, in-flight and failure; routing
+and deep-linkability; responsive breakage; and data flow — server-owned versus client-owned
+truth, sharing scope, staleness, the write path and what it invalidates, persistence across
+reload, and whether a value is derived rather than stored. For backends: idempotency of
+each unsafe mutation, the error contract's shape, pagination, authorisation, and — at the L
+tier only — concurrency and locking, which at S and M costs more attention than it returns.
 
 ### Test-first development
 
