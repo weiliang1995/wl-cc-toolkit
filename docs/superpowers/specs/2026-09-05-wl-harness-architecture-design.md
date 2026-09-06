@@ -47,7 +47,7 @@ built, and [ADR-0002](../../adr/0002-walking-skeleton-over-layer-order.md) for w
 | Layer | Responsibility | Artifacts |
 |---|---|---|
 | **L1 Information boundary** | Role and goal definition, information isolation, contract schema, context injection | `contracts/schema.json` (frontmatter contract: `id` / `type` / `status` / `role`); the three skill roles; subagent and worktree isolation boundaries; generated project `CLAUDE.md` / `AGENTS.md`; injection of profile data and `tsconfig` strictness into the agent's context before generation |
-| **L2 Tool system** | Filesystem abstraction, execution environment, MCP mounting | `scripts/*.mjs` (cross-platform, replaces bash); CodeGraph MCP (symbol graph, impact analysis); dependency-cruiser (dependency graph and bans); hook runtime |
+| **L2 Tool system** | Filesystem abstraction, execution environment, MCP mounting | `scripts/` (`.mjs` or `.sh`, chosen by shape — see §8); CodeGraph MCP (symbol graph, impact analysis); dependency-cruiser (dependency graph and bans); hook runtime |
 | **L3 Execution orchestration** | Stage sequencing, state machine orchestration | `commands/`: `init-project`, `feature-dev`, `bug-fix`, `ship`; step-ised commands; quick/deep split inside `feature-dev`; concurrency decomposition fed by CodeGraph impact |
 | **L4 Memory and state** | Task state, cross-session memory, context compaction | `workflow-state.md` (frontmatter for machines, body for humans); `timing-state.json`; `workstate/{processing,testing,shipped}/{slug}.md` state machine; `references/` preference library; skill dedup |
 | **L5 Evaluation and observability** | Independent verification, sandboxed testing, observability | Structured `acceptance` field on every step; `verify` skill; `integrated-test` skill; git worktree as sandbox; `harness-check.mjs`; timing logs summarised into the shipped document |
@@ -399,8 +399,31 @@ packages/wl-harness/
         ship-snapshot.mjs  timing.mjs
 ```
 
-All scripts are `.mjs`, never `.sh`. The author develops on Windows; bash-only scripts
-break pre-commit hooks there, and Node is already a dependency of every supported stack.
+### Choosing a script language
+
+Neither language is banned. Pick by the shape of the script:
+
+> **Orchestration is bash's domain; computation is not.** A script whose job is running
+> other programs and checking their exit codes is shorter and clearer in `.sh`. A script
+> that parses structured data, exposes functions, or needs unit tests belongs in `.mjs`.
+
+Bash is the usual default because `/bin/sh` is present before any toolchain is, and because
+`a | b && c` is one line there and fifteen in Node. That default does not transfer
+unexamined here: the author develops on Windows, where bash is an extra assumption rather
+than a given. Three specific costs apply to any `.sh` this project ships:
+
+- `core.autocrlf` is `true` in this repo, so a checked-out `.sh` would get CRLF endings and
+  die with `/bin/bash^M: bad interpreter`. `.gitattributes` now carries `*.sh text eol=lf`
+  to prevent that — the mirror of the `*.ps1 text eol=crlf` rule already there.
+- Git Bash ships no `jq`, so anything touching JSON needs an extra install.
+- MSYS rewrites path-shaped arguments (`/c/Users` against `C:\Users`), which bites when a
+  script passes paths to a native Windows executable.
+
+Node has none of these: it behaves identically on both platforms, `path.join` handles
+separators, no shell is involved, `node:test` is built in, and Node is already a dependency
+of every supported stack. So the S0 scripts — both of which parse JSON or frontmatter and
+both of which are unit-tested — are `.mjs`. A later slice's "run each `profile.checks`
+command and collect exit codes" script would reasonably be `.sh`.
 
 ### Runtime files in a target project
 
@@ -626,7 +649,7 @@ The spec-authority half of the question is *not* deferred: it is settled in §5.
 | Selection dimensions live inside profiles | A shared S/M/L matrix in the skeleton would have to be edited for every new stack, which is exactly the leak §7 forbids. |
 | Breadth-first walking skeleton | The contract's open questions can only be answered by a real run, and the contract is the root — guessing it wrong invalidates everything declared against it. See ADR-0002. |
 | Stack knowledge may be hardcoded until S2 | An abstraction extracted from one case is a guess. The second profile forces the real shape out. |
-| All scripts `.mjs` | Windows. `cp`, `rm -f` and `${HEAD:0:7}` are bash-only and break pre-commit there. |
+| Script language chosen by shape, not banned by rule | Orchestration (running programs, checking exit codes) is bash's domain; computation (structured data, exported functions, unit tests) is not. Bash's usual "it's always there" advantage does not hold on Windows, where it costs a `.gitattributes` LF rule, a `jq` install, and MSYS path rewriting. |
 | `schema.json` is the source, `schema.md` is generated | A hand-written spec plus a separate validator drift apart. |
 | `workflow-state.md` uses frontmatter rather than a separate JSON | One file, two readers: scripts parse the YAML frontmatter reliably, humans and agents read the body. |
 | Timing stays in a separate `timing-state.json` / jsonl | High-frequency appends do not belong in frontmatter. |

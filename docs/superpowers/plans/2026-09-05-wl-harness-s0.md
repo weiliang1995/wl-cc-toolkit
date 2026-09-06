@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Language:** every file committed to this repo is written in English — code, comments, docs, commit messages (spec §14, repo `CLAUDE.md`).
-- **All scripts are `.mjs`, never `.sh`.** The author develops on Windows; `cp`, `rm -f` and `${HEAD:0:7}` are bash-only and break pre-commit there (spec §8).
+- **S0's scripts are `.mjs`.** Neither language is banned — the rule is to pick by shape (spec §8): orchestration in `.sh`, computation in `.mjs`. Both S0 scripts parse structured data and are unit-tested, so both are `.mjs`. Do not rewrite them in bash: Git Bash ships no `jq`, and `core.autocrlf` is `true` in this repo.
 - **Zero external npm dependencies in `packages/wl-harness`.** Node's built-ins cover everything S0 needs, including the test runner.
 - **No validator and no enumerations ship in S0.** `contracts/schema.json` documents the frontmatter shape as data; nothing reads it at runtime yet (spec §15, §16 D-2).
 - **No profile mechanism in S0.** Stack choices live directly in `commands/init-project.md`. Do not create `references/profiles/` — that abstraction is S2 (ADR-0002).
