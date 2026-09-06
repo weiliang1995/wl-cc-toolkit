@@ -36,8 +36,13 @@ profile; until then they live here:
 - **Styling:** Less. Component styles are `*.module.less`; globals hold only
   variables, reset and theme
 - **UI:** Ant Design, always wrapped behind `src/components/ui/`. Business code
-  imports from `src/components/ui/`, never from `antd` directly — a PostToolUse
-  hook rejects violations
+  imports from `src/components/ui/`, never from `antd` directly. A PostToolUse
+  hook catches this, **but only for writes made with the Write and Edit tools** —
+  a file written through Bash (`cat`, a heredoc, `sed -i`, `tee`) never triggers
+  it, because the hook matches on tool name and a Bash payload carries a command
+  string rather than a file path. Treat the rule as binding on you regardless of
+  how you write the file; the hook is a safety net with a hole in it, not the
+  authority.
 - **Not installed unless a page needs one:** react-hook-form, zod, dayjs, axios
 - **No database, no auth:** complexity S, frontend-only
 
@@ -126,16 +131,33 @@ somewhere unintended and the run looks like it succeeded. Passing it as
 back to string interpolation in a future edit — it is the fix for a
 reproduced silent-corruption bug, not a style preference.
 
-1. **Intake** — Derive the slug from the description with `slugify` (for example
-   `my personal website` becomes `my-personal-website`). `slugify` strips
-   everything outside `[a-z0-9]` with no transliteration step, so a
-   non-ASCII description (for example one written in Chinese) can collapse to
-   an empty string. If the derived slug is empty, stop and ask the author for
-   an explicit ASCII slug instead of proceeding — do not call
-   `writeWorkflowState` with an empty slug. Confirm `<resolved
-   TARGET path>` is empty or contains only `.git`; if it holds other files,
-   stop and tell the author this command is for empty repositories. Write the
-   state file with stage `intake`.
+1. **Intake** — Derive the slug, then confirm the target is empty.
+
+   The argument to this command may carry more than the project's name — a
+   description, testing instructions, whatever the author typed. **Only the
+   project's short name feeds the slug.** Do not slugify the whole argument:
+   the result would be a long, wrong, but non-empty string, which every guard
+   below would happily accept. If the name is not obvious from the argument,
+   ask which part it is rather than guessing.
+
+   `slugify` is exported by `workflow-state.mjs` — the same module as
+   `writeWorkflowState`. Do not install a package of that name or write your
+   own; behaviour differences here produce a slug that disagrees with the one
+   in the state file. Call it the same way:
+
+   ```bash
+   node -e "import('<resolved HARNESS url>').then(m => console.log(m.slugify(process.argv[1])))" "<project name>"
+   ```
+
+   Echo the derived slug before using it, so a wrong one is visible rather
+   than buried in a filename. It strips everything outside `[a-z0-9]` with no
+   transliteration, so a non-ASCII name (Chinese, for example) collapses to an
+   empty string. If the slug is empty, stop and ask the author for an explicit
+   ASCII slug — never call `writeWorkflowState` with an empty slug.
+
+   Then confirm `<resolved TARGET path>` is empty or contains only `.git`; if
+   it holds other files, stop and tell the author this command is for empty
+   repositories. Write the state file with stage `intake`.
 
 2. **Context load** — Record stage `context-load`. State back to the author, in
    one short block: the fixed stack above, the directory layout above, and the
@@ -159,53 +181,25 @@ reproduced silent-corruption bug, not a style preference.
 5. **Implement** — Record stage `implement`. Work through `docs/plan.md` in
    order.
 
-   `create-next-app` refuses to scaffold into a non-empty directory unless
-   every existing entry is on its own whitelist (things like `.git`,
-   `.gitignore`, `docs`) — and `.claude/`, written in step 1, is not on that
-   whitelist. By this step `<resolved TARGET path>` already holds `.claude/`
-   (and `docs/spec.md`, `docs/plan.md` from steps 3-4), so scaffolding
-   *directly* into `<resolved TARGET path>` aborts. Scaffold into a fresh,
-   empty subdirectory instead, then move its contents up — including
-   dotfiles, which a bare `mv tmp/* .` silently skips:
+   Scaffold directly into the target directory:
 
    ```bash
    cd "<resolved TARGET path>"
-   SCAFFOLD_TMP="$(pwd)/wl-harness-scaffold"
-   rm -rf "$SCAFFOLD_TMP" && mkdir -p "$SCAFFOLD_TMP"
-   pnpm create next-app@latest "$SCAFFOLD_TMP" --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
-   pnpm --dir "$SCAFFOLD_TMP" add antd less
-   shopt -s dotglob nullglob
-   for f in "$SCAFFOLD_TMP"/*; do
-     mv "$f" "./$(basename "$f")"
-   done
-   shopt -u dotglob nullglob
-   rm -rf "$SCAFFOLD_TMP"
-   node -e "const fs = require('fs'); const p = JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); p.name = process.argv[2]; fs.writeFileSync(process.argv[1], JSON.stringify(p, null, 2) + '\n');" package.json "<slug>"
+   pnpm create next-app@latest . --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
+   pnpm add antd less
    ```
 
-   `create-next-app` derives the project name from the scaffold path's
-   basename and runs it through `validate-npm-package-name` before doing any
-   work, which rejects a name starting with `.` — so `$SCAFFOLD_TMP` must not
-   start with a dot; hence `wl-harness-scaffold`, not `.wl-harness-scaffold`.
-   `$SCAFFOLD_TMP` is empty before the generator runs, so the whitelist check
-   on `<resolved TARGET path>` never comes into play — `create-next-app` only
-   ever sees the empty scaffold directory. `create-next-app` detects that
-   `$SCAFFOLD_TMP` sits inside an existing git repository (the `.git` from
-   Task 5's `git init`, or whatever the author already had) and skips its own
-   `git init`, so there is no `.git`-vs-`.git` collision when the contents
-   move up. Nothing in the generated output is named `.claude` or `docs`, so
-   the move cannot clobber either.
-
-   Because `create-next-app` scaffolded into `$SCAFFOLD_TMP` instead of `.`,
-   the `name` field it wrote into `package.json` is `wl-harness-scaffold` —
-   the temp directory's basename, not the project's slug — and
-   `create-next-app` has no flag to override it. The `node -e` command above
-   runs after the move, with `<resolved TARGET path>` already the working
-   directory, and rewrites `package.json`'s `name` to `<slug>` in place. It
-   passes `package.json` as a plain relative path rather than interpolating
-   an absolute Windows path into the `-e` string, so there is nothing for
-   JS-string escaping to corrupt — the same hazard flagged above for
-   `TARGET`.
+   `create-next-app` refuses a non-empty directory unless every entry is on
+   its whitelist, but everything present by this step is on it. The list, read
+   from the published package, is: `.claude`, `.cursor`, `.DS_Store`, `.git`,
+   `.gitattributes`, `.gitignore`, `.gitlab-ci.yml`, `.hg`, `.hgcheck`,
+   `.hgignore`, `.idea`, `.npmignore`, `.travis.yml`, `.vscode`, `.zed`,
+   `LICENSE`, `Thumbs.db`, `docs`, `mkdocs.yml`, `npm-debug.log`,
+   `yarn-debug.log`, `yarn-error.log`, `yarnrc.yml`, `.yarn`. So `.claude/`
+   from step 1, `docs/` from steps 3-4, and an existing `.git` all pass. Scaffolding
+   into a temporary directory and moving the contents up is unnecessary — and
+   costly, because the temp directory's basename becomes the package `name`
+   and a dot-prefixed one is rejected outright by `validate-npm-package-name`.
 
    Then set `"strict": true` in `tsconfig.json` if the generator did not, create
    the directory layout above, and build each route from `docs/plan.md`. Every
