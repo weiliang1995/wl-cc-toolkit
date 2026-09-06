@@ -13,6 +13,11 @@
       "name": "ui-code-inspector",
       "source": "./packages/ui-code-inspector",
       "description": "Adds a dev-only click-the-UI-to-open-the-source inspector to Vite React projects"
+    },
+    {
+      "name": "wl-harness",
+      "source": "./packages/wl-harness",
+      "description": "Opinionated, contract-driven harness on top of Claude Code: turns stack preferences and delivery workflow into enforced gates"
     }
   ]
 }
