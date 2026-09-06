@@ -69,7 +69,7 @@ HARNESS=""
 if [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/scripts/workflow-state.mjs" ]; then
   HARNESS="$CLAUDE_PLUGIN_ROOT/scripts/workflow-state.mjs"
 else
-  HARNESS=$(find ~/.claude/plugins -path "*/wl-harness/scripts/workflow-state.mjs" -print -quit 2>/dev/null)
+  HARNESS=$(find -L ~/.claude/plugins -name workflow-state.mjs -path "*wl-harness*" -print -quit 2>/dev/null)
 fi
 if [ -z "$HARNESS" ] || [ ! -f "$HARNESS" ]; then
   echo "ERROR: could not locate wl-harness/scripts/workflow-state.mjs (checked \$CLAUDE_PLUGIN_ROOT and ~/.claude/plugins)"
@@ -79,26 +79,42 @@ HARNESS=$(node -e "console.log(require('fs').realpathSync(process.argv[1]))" "$H
 echo "Resolved HARNESS: $HARNESS"
 ```
 
-`~/.claude/plugins` may hold a symlink into a local checkout during
-development — `find` follows it, and the `realpathSync` call above resolves
-the final path to an absolute, non-symlinked location before it is used.
-Stop with the printed error if no file is found; do not guess a path and
-continue.
+The real Claude Code plugin layout nests a marketplace and version segment
+between `plugins` and the plugin's own files (for example
+`~/.claude/plugins/cache/<marketplace>/wl-harness/<version>/scripts/workflow-state.mjs`),
+so the fallback search matches by filename and filters on `wl-harness`
+appearing anywhere in the path, rather than assuming `scripts/` is a direct
+child of a directory literally named `wl-harness`. `-L` makes `find` follow a
+symlinked plugin directory, which is how local-checkout dev mode is wired in.
+If more than one match exists, take the first and trust the echoed path —
+that echo is the record of which one was used. Stop with the printed error if
+no file is found; do not guess a path and continue.
 
 Let `TARGET` be the absolute path of the directory being initialised (the
 current working directory unless the author names another).
 
+**Both resolutions above happen exactly once, in this preamble, before step 1
+runs.** Each numbered step below is a separately-invoked Bash call, and shell
+state — including `$HARNESS` and `$TARGET` — does not persist between
+separate Bash tool calls; only the working directory does. So `$HARNESS` and
+`$TARGET` used in this preamble are placeholders for exposition only: once
+resolved and echoed here, carry the two absolute paths forward as literal
+text substituted into every later command in this run, not as live shell
+variables. The remaining examples in this file write `<resolved HARNESS
+path>` and `<resolved TARGET path>` to mark exactly where that substitution
+happens.
+
 Record the stage at the *start* of each numbered step, using:
 
 ```bash
-node -e "import('file://$HARNESS').then(m => m.writeWorkflowState('$TARGET', { slug: '<slug>', stage: '<stage>' }))"
+node -e "import('file://<resolved HARNESS path>').then(m => m.writeWorkflowState('<resolved TARGET path>', { slug: '<slug>', stage: '<stage>' }))"
 ```
 
 1. **Intake** — Derive the slug from the description with `slugify` (for example
-   `my personal website` becomes `my-personal-site`). Confirm `TARGET` is empty
-   or contains only `.git`; if it holds other files, stop and tell the author
-   this command is for empty repositories. Write the state file with stage
-   `intake`.
+   `my personal website` becomes `my-personal-site`). Confirm `<resolved
+   TARGET path>` is empty or contains only `.git`; if it holds other files,
+   stop and tell the author this command is for empty repositories. Write the
+   state file with stage `intake`.
 
 2. **Context load** — Record stage `context-load`. State back to the author, in
    one short block: the fixed stack above, the directory layout above, and the
@@ -108,12 +124,12 @@ node -e "import('file://$HARNESS').then(m => m.writeWorkflowState('$TARGET', { s
 3. **Design** — Record stage `design`. Selection is already fixed by the stack
    block, so the only real decision here is structure. Ask the author for the
    page list if the description does not imply one, then write
-   `docs/spec.md` in `TARGET` containing: the project's purpose in one
+   `docs/spec.md` in `<resolved TARGET path>` containing: the project's purpose in one
    sentence, the list of routes with one line each, and the acceptance criteria
    ("`pnpm exec tsc --noEmit` passes", "every route renders", plus anything the
    author named). Keep it to intent and acceptance — no implementation detail.
 
-4. **Plan** — Record stage `plan`. Write `docs/plan.md` in `TARGET` listing the
+4. **Plan** — Record stage `plan`. Write `docs/plan.md` in `<resolved TARGET path>` listing the
    scaffold steps in order, each with the files it produces. For a typical
    personal site that is: create the Next.js app, add Less and Ant Design,
    create the `src/components/ui/` wrappers the routes need, then one step per
@@ -123,7 +139,7 @@ node -e "import('file://$HARNESS').then(m => m.writeWorkflowState('$TARGET', { s
    order:
 
    ```bash
-   cd "$TARGET"
+   cd "<resolved TARGET path>"
    pnpm create next-app@latest . --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
    pnpm add antd less
    ```
@@ -137,7 +153,7 @@ node -e "import('file://$HARNESS').then(m => m.writeWorkflowState('$TARGET', { s
    `docs/spec.md`:
 
    ```bash
-   cd "$TARGET" && pnpm exec tsc --noEmit
+   cd "<resolved TARGET path>" && pnpm exec tsc --noEmit
    ```
 
    Report a pass/fail summary. On failure, fix and re-run — this loop is
