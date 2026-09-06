@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 
 const CODE_FILE = /\.(ts|tsx|js|jsx)$/;
 const UI_DIR = /(^|\/)src\/components\/ui\//;
-const ANTD_IMPORT = /from\s+['"]antd['"]/;
+const ANTD_IMPORT = /from\s+['"]antd(\/[^'"]*)?['"]/;
 
 export function shouldBlockUiImport(filePath, content) {
   const normalised = String(filePath).replace(/\\/g, '/');
@@ -53,5 +53,10 @@ async function main() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  main().then(() => process.exit(0), () => process.exit(0));
+  // Do not force process.exit(0) here: on Windows, pipe writes to stdout are
+  // asynchronous at the libuv level, and process.exit() does not wait for the
+  // stream to drain — it can truncate the block decision before Claude Code
+  // reads it. Setting exitCode instead lets Node flush stdout and exit
+  // naturally once the event loop is empty.
+  main().then(() => { process.exitCode = 0; }, () => { process.exitCode = 0; });
 }

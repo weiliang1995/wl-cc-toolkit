@@ -461,6 +461,20 @@ test('ignores code with no antd import', () => {
   );
 });
 
+test('blocks a tree-shaken antd subpath import outside components/ui', () => {
+  assert.equal(
+    shouldBlockUiImport('src/app/page.tsx', 'import Button from "antd/es/button";'),
+    true,
+  );
+});
+
+test('allows a tree-shaken antd subpath import inside src/components/ui', () => {
+  assert.equal(
+    shouldBlockUiImport('src/components/ui/Button.tsx', 'import Button from "antd/es/button";'),
+    false,
+  );
+});
+
 test('ignores non-code files', () => {
   assert.equal(
     shouldBlockUiImport('src/styles/globals.less', '.antd-override { color: red; }'),
@@ -507,7 +521,7 @@ import { pathToFileURL } from 'node:url';
 
 const CODE_FILE = /\.(ts|tsx|js|jsx)$/;
 const UI_DIR = /(^|\/)src\/components\/ui\//;
-const ANTD_IMPORT = /from\s+['"]antd['"]/;
+const ANTD_IMPORT = /from\s+['"]antd(\/[^'"]*)?['"]/;
 
 export function shouldBlockUiImport(filePath, content) {
   const normalised = String(filePath).replace(/\\/g, '/');
@@ -552,14 +566,19 @@ async function main() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  main().then(() => process.exit(0), () => process.exit(0));
+  // Do not force process.exit(0) here: on Windows, pipe writes to stdout are
+  // asynchronous at the libuv level, and process.exit() does not wait for the
+  // stream to drain — it can truncate the block decision before Claude Code
+  // reads it. Setting exitCode instead lets Node flush stdout and exit
+  // naturally once the event loop is empty.
+  main().then(() => { process.exitCode = 0; }, () => { process.exitCode = 0; });
 }
 ```
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm test --prefix packages/wl-harness`
-Expected: PASS — 19 tests passing.
+Expected: PASS — 21 tests passing.
 
 - [ ] **Step 5: Register the hook**
 
@@ -816,7 +835,7 @@ for (const file of commandFiles) {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm test --prefix packages/wl-harness`
-Expected: PASS — 21 tests passing. If the alignment test fails, the command's
+Expected: PASS — 23 tests passing. If the alignment test fails, the command's
 frontmatter and body disagree: fix the command, not the test.
 
 - [ ] **Step 5: Commit**

@@ -56,6 +56,20 @@ test('ignores code with no antd import', () => {
   );
 });
 
+test('blocks a tree-shaken antd subpath import outside components/ui', () => {
+  assert.equal(
+    shouldBlockUiImport('src/app/page.tsx', 'import Button from "antd/es/button";'),
+    true,
+  );
+});
+
+test('allows a tree-shaken antd subpath import inside src/components/ui', () => {
+  assert.equal(
+    shouldBlockUiImport('src/components/ui/Button.tsx', 'import Button from "antd/es/button";'),
+    false,
+  );
+});
+
 test('ignores non-code files', () => {
   assert.equal(
     shouldBlockUiImport('src/styles/globals.less', '.antd-override { color: red; }'),
