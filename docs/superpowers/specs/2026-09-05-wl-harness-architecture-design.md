@@ -648,11 +648,29 @@ not survive compaction, which is what makes a purely conversational intake re-as
 questions it already asked — and inconsistent answers to a repeated question then cost
 more explanation. The spec on disk is the state.
 
-**It asks in batches, with a recommendation per question.** One question at a time hides
-the shape of what is being decided and forces the author to commit serially, so a later
-question that should revise an earlier answer can only be handled by retracting it. A
-batch, each item carrying the agent's recommended answer, turns most of the work into
-confirmation rather than composition.
+**Creating a spec requires the author's approval before Plan begins.** Refining an existing
+spec does not — that distinction is the one already drawn for `feature-dev quick` in §5,
+applied to the case where there is no parent spec to refine. Creating one from nothing is
+not a smaller version of refining it; it establishes every constraint at once, and §10
+forbids the agent from settling on its own what constrains it. The first run of
+`init-project` wrote a spec and a plan and went straight on to implement, and the author
+first saw the spec after the code existed.
+
+**The approval is a grill over the draft, not a request to read it.** The agent drafts
+first, then puts its decisions to the author as a batch — each with its recommendation and
+the alternatives it passed over — revises the spec from the answers, and only then enters
+Plan. Handing over the file to read instead is weaker, and weaker in the way that matters:
+a flat spec states decisions as though they were facts. "Routes: `/`, `/about`,
+`/projects`, `/contact`" reads as a description of the project, not as a choice against
+single-page anchors or a tab view with `history.replaceState` — so the reader skims past a
+fork without seeing that it was one. A recommendation with its alternatives makes the fork
+visible and therefore arguable. That is what the batch is for; being faster than serial
+dialogue is a side benefit, not the point.
+
+**What becomes a question is what had an alternative.** Anything fixed by the stack block
+or stated outright by the author is written as fact and not asked about; anything the agent
+chose between candidates is surfaced as a decision. Turning the whole document into
+questions produces the fatigue that ends in rubber-stamping.
 
 **A template drives it.** Free association asks whatever occurs to the agent; a template
 guarantees the known-important dimensions are reached. It is organised by profile `kind`
@@ -685,15 +703,36 @@ the spec.** A hand-written brief almost never states acceptance criteria — peo
 naturally write down what "done" means — and that is the one thing stage 6 needs. So the
 supplied document answers what it answers, and the batch covers the remainder.
 
+**At least one acceptance criterion must trace back to a word in Purpose, and the harness's
+own red lines do not count as project acceptance.** The first run produced exactly three
+criteria — `tsc --noEmit` passes, every route renders, no `antd` outside
+`src/components/ui/` — against a Purpose of "presenting who the author is, what they have
+built, and how to reach them". Four blank pages satisfy all three. The first two are
+generic to any TypeScript project and the third is the harness checking its own rule, so
+nothing in the section asked whether the site does what the project exists to do. Left
+alone, acceptance criteria default to whatever the harness can already check, which is
+precisely the set that needed no thought.
+
+**Structure may be proposed; content must be sourced.** An agent can reasonably suggest an
+information architecture, and cannot possibly know the author's biography, project list or
+contact details. Asked for neither, the first run invented all three into
+`services/profile.ts`. The template asks who supplies the real text, and where the answer
+is "the author", the spec says so and marks the placeholders rather than shipping fiction
+that has to be found and replaced later.
+
 The frontend template's known-important dimensions, from the states most often omitted to
 the data-flow questions that decide §6.2's State row: the four view states (loading, empty,
 error, populated) with empty's four causes distinguished (first use, user-cleared,
-no-results, error); form behaviour across validation timing, in-flight and failure; routing
-and deep-linkability; responsive breakage; and data flow — server-owned versus client-owned
-truth, sharing scope, staleness, the write path and what it invalidates, persistence across
-reload, and whether a value is derived rather than stored. For backends: idempotency of
-each unsafe mutation, the error contract's shape, pagination, authorisation, and — at the L
-tier only — concurrency and locking, which at S and M costs more attention than it returns.
+no-results, error); the navigation model — separate routes against single-page anchors
+against a tab view driven by `history.replaceState` — which the first run defaulted to
+separate routes without ever surfacing that a choice existed; per-page metadata and
+open-graph tags, which decide whether a shared link previews at all; form behaviour across
+validation timing, in-flight and failure; routing and deep-linkability; responsive
+breakage; and data flow — server-owned versus client-owned truth, sharing scope, staleness,
+the write path and what it invalidates, persistence across reload, and whether a value is
+derived rather than stored. For backends: idempotency of each unsafe mutation, the error
+contract's shape, pagination, authorisation, and — at the L tier only — concurrency and
+locking, which at S and M costs more attention than it returns.
 
 ### Test-first development
 
