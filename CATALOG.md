@@ -14,6 +14,7 @@ Index of all skills, plugins and tools.
 |-----------|-------------|
 | `packages/cc-dialogs` | Replaces Claude Code's terminal prompts with native macOS / Windows dialogs |
 | `packages/ui-code-inspector` | Plugin wrapper that ships the `/ui-code-inspector` skill |
+| `packages/wl-harness` | Opinionated, contract-driven harness on top of Claude Code (S0 slice: `init-project` at complexity S) |
 
 ## Scripts
 

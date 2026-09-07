@@ -1,0 +1,18 @@
+{
+  "$comment": "S0 shape only. No enumerated values and no validator ship with this slice — see docs/superpowers/specs/2026-09-05-wl-harness-architecture-design.md section 15 and section 16 D-2. Nothing reads this file at runtime yet; it documents the frontmatter every wl-harness command carries.",
+  "fields": {
+    "id": {
+      "type": "string",
+      "description": "Stable identifier for this command definition, unique within the plugin."
+    },
+    "type": {
+      "type": "string",
+      "description": "Which command this is. S0 has exactly one value in use: init-project. Deliberately not enumerated — see D-2."
+    },
+    "steps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "One entry per numbered step in the command body, in order. Must align 1:1 with the body's ^N. lines. Checked by scripts/check-command-steps.test.mjs; harness-check.mjs is a later slice."
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "wl-harness",
+  "version": "0.1.0",
+  "description": "Opinionated, contract-driven harness on top of Claude Code: turns stack preferences and delivery workflow into enforced gates"
+}

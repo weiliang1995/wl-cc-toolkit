@@ -1,0 +1,10 @@
+{
+  "name": "wl-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Opinionated, contract-driven harness on top of Claude Code",
+  "scripts": {
+    "test": "node --test"
+  }
+}
