@@ -306,14 +306,22 @@ const pluginRoot = path.join(here, '..');
 // to appear, because that is what an agent reads in order to judge.
 const SKELETON_DIRS = ['commands', 'scripts', 'contracts'];
 
-// Names that must not appear in the skeleton. Derived from what the profiles
-// declare rather than hand-maintained, plus the library names those ids stand
-// for, which no id spells out.
+// Names that must not appear in the skeleton.
+//
+// Matched on word boundaries, not as substrings: "less" is a substring of
+// "unless" and "regardless", "react" of "reaction", and the command prose
+// legitimately uses all three. Verified — with \b, "regardless of how" and
+// "unless the author" pass while "Less. Component styles", "*.module.less"
+// and "React components" are still caught.
 const BANNED = [
-  'next.js', 'nextjs', 'create-next-app', 'antd', 'ant design',
-  'less', 'sass', 'tailwind', 'pnpm', 'npm ', 'yarn',
+  'next\\.js', 'nextjs', 'create-next-app', 'antd', 'ant design',
+  'less', 'sass', 'tailwind', 'pnpm', 'yarn',
   'vitest', 'jest', 'react',
 ];
+
+function bannedIn(text) {
+  return BANNED.filter((name) => new RegExp(`\\b${name}\\b`, 'i').test(text));
+}
 
 function filesUnder(dir) {
   const out = [];
@@ -331,8 +339,8 @@ for (const dir of SKELETON_DIRS) {
     if (file.endsWith('skeleton-purity.test.mjs')) continue;
 
     test(`${dir}/${path.basename(file)} names no stack`, () => {
-      const text = readFileSync(file, 'utf8').replace(/\r\n/g, '\n').toLowerCase();
-      const found = BANNED.filter((name) => text.includes(name));
+      const text = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+      const found = bannedIn(text);
       assert.deepEqual(
         found,
         [],
@@ -954,7 +962,7 @@ git commit -m "docs(wl-harness): record what S1 built and reordered"
 
 **Type consistency.** `loadProfile(pluginRoot, id)`, `applyOverlay(profile, overlay)`, `SEALED_FIELDS`, `resumePoint(projectDir)`, `renderCapture(entry)`, `parseCapture(raw)` and `readCaptures(shippedDir)` are defined in Tasks 1, 4 and 5 and used under those exact names in Tasks 2, 4 and 6. The profile field names in Task 2's JSON — `scaffold`, `deps`, `layout`, `source_root`, `test_dir`, `checks`, `verify`, `forbidden`, `scaffold_safe_entries`, `package_manager`, `style_convention` — are the same ones Task 2 step 5's mapping table and Task 6's command refer to.
 
-**One risk worth naming.** Task 2's purity test bans the substring `react`, which also appears inside `@testing-library/react` and in ordinary English words like "reaction". The banned list is checked against `commands/`, `scripts/` and `contracts/` only, where neither should appear — but if it produces a false positive, narrow the entry rather than deleting the test.
+**One risk worth naming.** Task 2's purity test is the boundary between the harness and a profile made executable, so a false positive there is tempting to fix by deleting the test. Do not. The substring form was already caught and fixed during planning — `less` is inside "unless" and "regardless", `react` inside "reaction", and the command prose uses all three — which is why it matches on word boundaries. If a new false positive appears, narrow that entry.
 
 ---
 
