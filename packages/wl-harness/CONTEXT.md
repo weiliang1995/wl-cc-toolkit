@@ -67,3 +67,16 @@ _Avoid_: release, deploy, publish, merge
 The stable identifier for one work item, shared by its workstate file, its
 snapshots and its logs.
 _Avoid_: id, name, ticket number
+
+**Capture**:
+The record one shipped work item leaves behind: what was decided, and what the
+author had to answer that no template asked. Records without reducing, and lives
+in that item's `shipped/{slug}.md`.
+_Avoid_: log, notes, retrospective
+
+**Distill**:
+Reducing many captures into a proposed convention, on the evidence that it
+recurred. Produces a proposal, never a direct edit — a work history contains
+deliberate convention and accumulated accident alike, and nothing mechanical
+separates them. One capture is a sample, not a pattern.
+_Avoid_: extract, learn, promote
