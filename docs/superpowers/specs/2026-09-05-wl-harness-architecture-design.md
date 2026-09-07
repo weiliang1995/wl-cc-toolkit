@@ -189,11 +189,23 @@ means writing its own S/M/L slice rather than editing a shared matrix (§7).
 | Backend | Next Route Handlers, or none | Next Route Handlers (Vercel-first) | Next Route Handlers; split out a service only when genuinely required |
 | DB / ORM | SQLite + Prisma | Postgres (Neon) + Prisma | Postgres (Neon) + Prisma |
 | Auth | none / simple token | cookie session or JWT + route guards | RBAC with permission points |
-| Testing | key utils unit-tested | vitest + core flows | vitest + Playwright |
+| Testing | vitest: unit + integration for everything hand-written | as S, plus the core flows end to end in vitest | as M, plus Playwright for true E2E |
 
 Fixed regardless of complexity: TypeScript strict, react-hook-form + zod (one schema for
 form validation and types), dayjs, a single axios instance with interceptors,
 ESLint + Prettier, pnpm.
+
+The Testing row follows the Testing Trophy rather than the pyramid: static analysis first
+(`tsc --noEmit` and ESLint, which every tier already runs), then unit tests for pure
+functions, then integration tests — components rendered with their real children — carrying
+the bulk of the value, and end-to-end last and fewest. Its governing rule is Testing
+Library's: *the more your tests resemble the way the software is used, the more confidence
+they give you*, whose corollary is that implementation details — state variables, handler
+internals, class names, markup structure — are never asserted on. Every tier tests what it
+hand-writes; the tiers differ in how far up the trophy they go, not in whether code gets
+tested at all. Route-level "does every page render" coverage is E2E's job and therefore
+absent below L on purpose. It must not be faked with a build command: `pnpm build` renders
+every page only when output is fully static, and proves nothing under CSR, SSR or ISR.
 
 **These are defaults, not rules, and the State row in particular is a guess.** The real
 determinant of a state-management choice is the project's data flow — which data has its

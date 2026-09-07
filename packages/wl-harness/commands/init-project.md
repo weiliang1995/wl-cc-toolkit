@@ -43,6 +43,8 @@ profile; until then they live here:
   string rather than a file path. Treat the rule as binding on you regardless of
   how you write the file; the hook is a safety net with a hole in it, not the
   authority.
+- **Testing:** vitest + @testing-library/react. Tests are written before the code
+  they cover and live in a `__tests__/` directory beside it
 - **Not installed unless a page needs one:** react-hook-form, zod, dayjs, axios
 - **No database, no auth:** complexity S, frontend-only
 
@@ -207,7 +209,13 @@ reproduced silent-corruption bug, not a style preference.
    cd "<resolved TARGET path>"
    pnpm create next-app@latest . --ts --eslint --app --src-dir --import-alias "@/*" --no-tailwind
    pnpm add antd less
+   pnpm add -D vitest @vitejs/plugin-react @testing-library/react @testing-library/jest-dom jsdom
    ```
+
+   Add a `test` script to `package.json` and a `vitest.config.ts` using the
+   React plugin and the `jsdom` environment. The suite must run before any
+   application code is written — a test runner that has never executed is not
+   set up, it is merely installed.
 
    `create-next-app` refuses a non-empty directory unless every entry is on
    its whitelist, but everything present by this step is on it. The list, read
@@ -221,21 +229,72 @@ reproduced silent-corruption bug, not a style preference.
    costly, because the temp directory's basename becomes the package `name`
    and a dot-prefixed one is rejected outright by `validate-npm-package-name`.
 
-   Then set `"strict": true` in `tsconfig.json` if the generator did not, create
-   the directory layout above, and build each route from `docs/plan.md`. Every
-   Ant Design component gets a wrapper in `src/components/ui/` first; routes
-   import the wrapper.
+   Then set `"strict": true` in `tsconfig.json` if the generator did not, and
+   create the directory layout above.
+
+   **Build every module test-first**, in this order per module: write the
+   failing test, run it and confirm it fails for the reason you expect, write
+   the smallest implementation that passes, run it again. Scaffolding produced
+   by the generator is not written by you and needs no test; everything you
+   write does.
+
+   Tests live in a `__tests__/` directory beside the code they cover —
+   `src/services/__tests__/projects.test.ts` for `src/services/projects.ts`.
+
+   **The guiding principle** (Testing Library's, and the Testing Trophy's):
+   *the more your tests resemble the way the software is used, the more
+   confidence they give you.* Its corollary is the one rule that matters here:
+   **never assert on implementation details** — state variables, handler
+   internals, class names, markup structure. None of those are things a user
+   experiences.
+
+   That principle rules out three patterns worth naming, because they are the
+   ones that get written by reflex and cannot fail when the code is wrong:
+
+   - `renders without crashing` — a user does not experience "no exception",
+     they experience seeing something. Any behavioural test that renders the
+     component already fails when it throws, so this adds nothing.
+   - snapshot assertions — they pin markup structure, and a legitimate change
+     breaks them, which trains everyone to re-record rather than read them.
+   - asserting a third-party component rendered (`.ant-btn` exists) — that is
+     Ant Design's class name, an implementation detail, and its correctness is
+     Ant Design's responsibility.
+
+   Test instead what a user would notice: conditional rendering (what an empty
+   list shows against a populated one), props-to-output transformation, what
+   happens on interaction, degraded behaviour on missing or malformed data, and
+   every branch of a service or utility function. Where you want protection
+   against a crash on bad input, assert **what should be shown instead** rather
+   than that nothing threw.
+
+   Which layer to write at, per the Testing Trophy: static analysis is already
+   covered by `tsc --noEmit` and ESLint; unit tests cover pure functions;
+   integration tests — components rendered with their real children — carry the
+   bulk of the value and should be the bulk of what you write. End-to-end
+   coverage, including "every route renders", belongs to Playwright at the L
+   tier per §6.2 and is deliberately absent here. Do not substitute a build
+   command for it: `pnpm build` renders every page only when output is fully
+   static, and says nothing about routes under CSR, SSR or ISR.
+
+   A component with no logic — a pure passthrough to a UI primitive, which most
+   `src/components/ui/` wrappers are — has no behaviour to resemble. Say so
+   rather than inventing a test for it.
+
+   Every Ant Design component gets a wrapper in `src/components/ui/` first;
+   routes import the wrapper.
 
 6. **Verify** — Record stage `verify`. Run the acceptance criteria from
    `docs/spec.md`:
 
    ```bash
-   cd "<resolved TARGET path>" && pnpm exec tsc --noEmit
+   cd "<resolved TARGET path>"
+   pnpm test
+   pnpm exec tsc --noEmit
    ```
 
-   Report a pass/fail summary. On failure, fix and re-run — this loop is
-   machine-judged and does not involve the author. Do not proceed until it
-   passes.
+   Report a pass/fail summary, criterion by criterion. On failure, fix and
+   re-run — this loop is machine-judged and does not involve the author. Do not
+   proceed until every criterion passes.
 
 7. **Handoff** — Record stage `handoff` only after step 6 is green; a failing
    check means the work is unfinished, not that a rule was broken. Tell the
