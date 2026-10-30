@@ -13,6 +13,16 @@
       "name": "ui-code-inspector",
       "source": "./packages/ui-code-inspector",
       "description": "Adds a dev-only click-the-UI-to-open-the-source inspector to Vite React projects"
+    },
+    {
+      "name": "e2e-test",
+      "source": "./packages/e2e-test",
+      "description": "Sets up Playwright E2E tests with istanbul branch coverage and generates, runs and fixes a test for each code branch"
+    },
+    {
+      "name": "coderabbit-review",
+      "source": "./packages/coderabbit-review",
+      "description": "Runs a local CodeRabbit CLI review of the current branch and reports, or optionally fixes, the findings"
     }
   ]
 }

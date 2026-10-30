@@ -1,0 +1,37 @@
+{
+  "name": "coderabbit-review",
+  "version": "1.0.0",
+  "description": "Runs a local CodeRabbit CLI review of the current branch and reports, or optionally fixes, the findings",
+  "author": {
+    "name": "weiliang1995",
+    "email": "wlkuik@gmail.com",
+    "url": "https://github.com/weiliang1995"
+  },
+  "homepage": "https://github.com/weiliang1995/wl-cc-toolkit",
+  "repository": "https://github.com/weiliang1995/wl-cc-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "coderabbit",
+    "code-review",
+    "review",
+    "git"
+  ],
+  "skills": "./skills/",
+  "hooks": {},
+  "interface": {
+    "displayName": "CodeRabbit Review",
+    "shortDescription": "Run a local CodeRabbit review of your current changes",
+    "longDescription": "Runs `coderabbit review --agent --fresh` on the current Git branch or uncommitted changes and summarises the findings. On explicit request it validates each finding against the code, fixes the valid ones and runs the repo's lint, typecheck and tests. It never commits, pushes or opens PRs.",
+    "developerName": "weiliang1995",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Run a CodeRabbit review of my current changes.",
+      "Fix the CodeRabbit findings."
+    ],
+    "websiteURL": "https://github.com/weiliang1995/wl-cc-toolkit"
+  }
+}

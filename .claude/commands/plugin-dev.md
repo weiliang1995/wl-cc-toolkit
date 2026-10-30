@@ -24,12 +24,14 @@ Constants:
   currently checked out**
 - CACHE = `~/.claude/plugins/cache/wl-cc-toolkit`
 - REGISTRY = `~/.claude/plugins/installed_plugins.json`
+- SETTINGS = `~/.claude/settings.json`
+- CLONE = `~/.claude/plugins/marketplaces/wl-cc-toolkit` — the installed marketplace clone,
+  tracking `main`
 
-> **Read the local marketplace, not the installed clone.** The clone under
-> `~/.claude/plugins/marketplaces/` tracks `main`, but plugins are developed on a feature
-> branch and verified before they are merged. Resolving a name against `main` while
-> computing a path into this working tree means a plugin that only exists on the branch is
-> reported missing even though its source is right there.
+> **Read the local marketplace, not the installed clone.** CLONE tracks `main`, but plugins
+> are developed on a feature branch and verified before they are merged. Resolving a name
+> against `main` while computing a path into this working tree means a plugin that only
+> exists on the branch is reported missing even though its source is right there.
 
 ### Step 1: Resolve source path
 
@@ -108,23 +110,38 @@ ln -s "{local-path}" "$CACHE/{plugin-name}/{version}"
 }
 ```
 
-5. **Verify the link actually conducts.** Append a byte to a file in the local source, read
+5. **Enable it.** In SETTINGS, set `enabledPlugins["{plugin-name}@wl-cc-toolkit"]` to
+   `true`, keeping every other key. A registered plugin that is not enabled is never loaded.
+
+6. **Make CLONE's marketplace list it.** If `$CLONE/.claude-plugin/marketplace.json` has no
+   plugin with this `name`, append the entry from MARKETPLACE verbatim. Leave an existing
+   entry alone. Remember whether you appended, for the report.
+
+7. **Verify the link actually conducts.** Append a byte to a file in the local source, read
    that file back through the cache path, and confirm the byte is there — then remove it:
 
 ```bash
 echo "" >> "{local-path}/.claude-plugin/plugin.json"
 tail -c 40 "$CACHE/{plugin-name}/{version}/.claude-plugin/plugin.json"
-cd "$PROJECT" && git checkout .claude-plugin/plugin.json 2>/dev/null || true
+git -C "$PROJECT" checkout -- "{local-path}/.claude-plugin/plugin.json"
 ```
 
 If the change is not visible through the cache path, the link is a copy: report failure and
 do not claim success. Checking that `ls` "looks right" is exactly the test a copy passes.
 
-6. Print: `Linked {plugin-name} -> {local-path}. Restart the session to load it.`
+8. Print: `Linked {plugin-name} -> {local-path}. Restart the session, then check /plugin
+   shows it loaded.` If step 6 appended an entry, add that CLONE now has an uncommitted
+   change that `remote` (or `git -C "$CLONE" checkout -- .claude-plugin/marketplace.json`
+   once the plugin is on `main`) undoes, and that a marketplace update may conflict with it
+   until then.
 
-> **Why both the cache link and the registry?** Claude Code loads plugin content from the
-> cache path at session start and ignores `installPath`, so the link is what makes local
-> code take effect. The registry entry is what makes the plugin load at all.
+> **Why all four?** Claude Code resolves `{name}@wl-cc-toolkit` through CLONE's marketplace,
+> loads it only if SETTINGS enables it and REGISTRY records it, and reads its content from
+> the cache path (ignoring `installPath`). For an already-published, installed plugin the
+> first three already hold and only the link matters; for a plugin that exists only on this
+> branch, all three are missing, and skipping any one leaves the skill absent after restart
+> with no error. Step 7 proves only the link — whether the plugin loaded is visible only in
+> a new session.
 
 #### `remote`
 
@@ -142,3 +159,14 @@ rm -rf "$CACHE/{plugin-name}/{version}"
 
 > A plugin that has never been published has no remote copy to restore. Say so rather than
 > leaving an empty cache directory behind.
+
+**If the plugin is not in CLONE's marketplace on `main`** (`git -C "$CLONE" show
+HEAD:.claude-plugin/marketplace.json` has no entry with this `name`), it was never
+published, so undo what `local` added instead of steps 2–4:
+
+- Remove the `{plugin-name}` entry from `$CLONE/.claude-plugin/marketplace.json`, or, if
+  that is the file's only change, `git -C "$CLONE" checkout -- .claude-plugin/marketplace.json`
+- Delete the `{plugin-name}@wl-cc-toolkit` key from REGISTRY and from SETTINGS
+  `enabledPlugins`
+- Remove the now-empty `$CACHE/{plugin-name}` directory
+- Print: `Unlinked {plugin-name}; it has no remote copy, so it is no longer installed.`
