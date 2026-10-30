@@ -3,6 +3,10 @@
 #   .coderabbit/review.ndjson   current valid review
 #   .coderabbit/stale/          superseded reviews (history only)
 # The current review is replaced only after a new review succeeds.
+# By default only what is not on the remote yet is reviewed: commits since the branch's
+# upstream (or origin/<branch>) plus local edits. Pushed commits are left to the PR review.
+# Extra arguments go to `coderabbit review`, e.g. `--base main` or `--include-untracked`;
+# passing --base or --base-commit overrides the default base.
 
 set -euo pipefail
 
@@ -19,6 +23,8 @@ STALE_DIR="$BASE_DIR/stale"
 ACTIVE_FILE="$BASE_DIR/review.ndjson"
 
 mkdir -p "$STALE_DIR"
+# Leftovers from runs that were killed outright (SIGKILL, e.g. a tool timeout) skip the trap.
+rm -f "$BASE_DIR"/review.tmp.*
 TMP_FILE=$(mktemp "$BASE_DIR/review.tmp.XXXXXX")
 trap 'rm -f "$TMP_FILE"' EXIT
 
@@ -27,10 +33,32 @@ field() {
   sed -nE "s/.*\"$2\" *: *\"?([^\",}]*)\"?.*/\1/p" <<<"$1"
 }
 
+args=("$@")
+explicit_base=no
+for a in "$@"; do
+  case "$a" in --base|--base=*|--base-commit|--base-commit=*) explicit_base=yes ;; esac
+done
+
+if [ "$explicit_base" = no ]; then
+  # --base-commit rather than --base: --base is saved as a repo-wide git preference.
+  REMOTE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)
+  CUR=$(git branch --show-current 2>/dev/null || true)
+  if [ -z "$REMOTE" ] && [ -n "$CUR" ] && git rev-parse -q --verify "refs/remotes/origin/$CUR" >/dev/null; then
+    REMOTE="origin/$CUR"
+  fi
+  if [ -n "$REMOTE" ]; then
+    FORK=$(git merge-base HEAD "$REMOTE")
+    args+=(--base-commit "$FORK")
+    echo "Reviewing changes not yet on $REMOTE (since $(git rev-parse --short "$FORK"))."
+  else
+    echo "No remote branch yet; CodeRabbit compares against its default base branch."
+  fi
+fi
+
 echo "Running fresh CodeRabbit review (can take up to ~15 minutes)..."
 
 rc=0
-coderabbit review --agent --fresh | tee "$TMP_FILE" || rc=$?
+coderabbit review --agent --fresh ${args[@]+"${args[@]}"} | tee "$TMP_FILE" || rc=$?
 
 if [ "$rc" -ne 0 ]; then
   echo "CodeRabbit review failed (exit $rc). Current review left unchanged." >&2
