@@ -1,0 +1,5 @@
+{
+  "name": "coderabbit-review",
+  "version": "0.1.0",
+  "description": "Runs a local CodeRabbit CLI review of the current branch and reports, or optionally fixes, the findings"
+}

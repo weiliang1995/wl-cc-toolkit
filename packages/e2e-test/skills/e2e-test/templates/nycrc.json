@@ -1,0 +1,7 @@
+{
+  "include": ["src/**/*.{js,jsx,ts,tsx}"],
+  "exclude": ["src/**/*.d.ts", "src/**/*.test.*", "src/**/*.spec.*"],
+  "reporter": ["text-summary", "html", "json"],
+  "report-dir": "coverage/e2e",
+  "temp-dir": ".nyc_output"
+}

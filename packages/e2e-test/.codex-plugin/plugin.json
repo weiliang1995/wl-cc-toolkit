@@ -1,0 +1,38 @@
+{
+  "name": "e2e-test",
+  "version": "0.1.0",
+  "description": "Sets up Playwright E2E tests with istanbul branch coverage and generates, runs and fixes a test for each code branch",
+  "author": {
+    "name": "weiliang1995",
+    "email": "wlkuik@gmail.com",
+    "url": "https://github.com/weiliang1995"
+  },
+  "homepage": "https://github.com/weiliang1995/wl-cc-toolkit",
+  "repository": "https://github.com/weiliang1995/wl-cc-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "e2e",
+    "playwright",
+    "istanbul",
+    "coverage",
+    "testing"
+  ],
+  "skills": "./skills/",
+  "hooks": {},
+  "interface": {
+    "displayName": "E2E Test",
+    "shortDescription": "Set up Playwright E2E tests and cover every code branch",
+    "longDescription": "Sets up Playwright E2E testing for a frontend project, with istanbul branch coverage and the Playwright MCP, then analyses each branch in the code to generate, run and fix test cases. Scope a run to one route, one file or only the uncovered branches.",
+    "developerName": "weiliang1995",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Set up Playwright E2E tests for this project.",
+      "Write E2E tests for the uncovered branches."
+    ],
+    "websiteURL": "https://github.com/weiliang1995/wl-cc-toolkit"
+  }
+}

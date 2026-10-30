@@ -1,0 +1,5 @@
+{
+  "name": "e2e-test",
+  "version": "0.1.0",
+  "description": "Sets up Playwright E2E tests with istanbul branch coverage and generates, runs and fixes a test for each code branch"
+}
